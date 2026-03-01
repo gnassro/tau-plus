@@ -28,6 +28,36 @@ Context-aware split pane that displays files the agent is working on.
 - Could auto-show preview when a file gets edited
 - Or manually open via file picker / clicking filename in chat
 
+## Bookmarked Sessions
+
+Star/favourite conversations from the sidebar. Bookmarked sessions pinned to the top or filterable. Stored locally (localStorage) or synced to a small JSON file so it persists across devices.
+
+Could extend to bookmarking individual messages within a session too — pin key decisions, useful snippets, important moments.
+
+## Conversation Fork/Branch Visualization
+
+Pi already has fork support in the RPC. Visualize the conversation as a tree — go back to any point and try a different approach. Like git for conversations.
+
+## Diff Viewer
+
+When the agent edits a file, show a proper side-by-side diff instead of just a tool card. Data is already in tool events.
+
+## Full-Text Session Search
+
+Search across ALL historical sessions, not just the sidebar list. "When did I last work on the auth module?"
+
+## Voice Input
+
+Talk to Pi from mobile/tablet. Web Speech API. Walk around while pair programming.
+
+## Cost Dashboard
+
+Track spending over time, per model, per project. Charts and trends. Data already captured per message.
+
+## Push Notifications
+
+Start a long task on desktop, get a ping on your phone when it's done. Service workers.
+
 ## memoryd Dashboard
 
 Standalone viewer for memoryd memory files (session cards, semantic/episodic memory, working memory). Was previously built into Tau, stripped out to keep the core lean. Could be a separate page or a separate pi package.
