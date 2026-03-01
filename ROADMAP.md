@@ -34,13 +34,16 @@ Star/favourite conversations from the sidebar. Bookmarked sessions pinned to the
 
 Could extend to bookmarking individual messages within a session too — pin key decisions, useful snippets, important moments.
 
-## Agent Team Awareness
+## Agent Teams (bundled)
 
-Detect multiple Pi sessions running in tmux (common pattern for parallel agents). Show a `team` tag or grouped section in the sidebar. Could detect via `tmux list-sessions` cross-referenced with running Pi processes — no dependency on any specific extension.
+Ship a subagent/team extension as part of Tau. Installing Tau gives you both the web UI and the ability to spawn parallel agent teams. Tau then has full awareness of team sessions because it shipped them.
 
-- Visual grouping in sidebar
-- Team status overview (which agents are still working)
+- Spawn agent teams from the web UI (not just TUI)
+- Visual grouping in sidebar — team members under a collapsible header
+- Team status overview (which agents are still working, which finished)
 - Bulk actions (kill all, view all)
+- Live-switch between agents to watch them work
+- Based on Pi's subagent example pattern but tightly integrated
 
 ## Conversation Fork/Branch Visualization
 
