@@ -10,6 +10,34 @@ export class SessionSidebar {
     this.projects = [];
     this.collapsedProjects = new Set();
     this.searchQuery = '';
+    this.favourites = JSON.parse(localStorage.getItem('tau-favourites') || '[]');
+    this.contextMenu = null;
+
+    // Close context menu on click anywhere
+    document.addEventListener('click', () => this.closeContextMenu());
+    document.addEventListener('contextmenu', (e) => {
+      // Close if right-clicking outside a session item
+      if (!e.target.closest('.session-item')) this.closeContextMenu();
+    });
+  }
+
+  saveFavourites() {
+    localStorage.setItem('tau-favourites', JSON.stringify(this.favourites));
+  }
+
+  isFavourite(filePath) {
+    return this.favourites.includes(filePath);
+  }
+
+  toggleFavourite(filePath) {
+    const idx = this.favourites.indexOf(filePath);
+    if (idx >= 0) {
+      this.favourites.splice(idx, 1);
+    } else {
+      this.favourites.push(filePath);
+    }
+    this.saveFavourites();
+    this.render();
   }
 
   async loadSessions() {
@@ -32,26 +60,35 @@ export class SessionSidebar {
 
   applySearch() {
     if (!this.searchQuery) {
-      // Show all
-      this.container.querySelectorAll('.session-item').forEach(el => {
-        el.classList.remove('hidden');
-      });
-      this.container.querySelectorAll('.project-group').forEach(el => {
-        el.style.display = '';
-      });
+      this.container.querySelectorAll('.session-item').forEach(el => el.classList.remove('hidden'));
+      this.container.querySelectorAll('.project-group').forEach(el => el.style.display = '');
+      // Show/hide favourites section too
+      const favSection = this.container.querySelector('.favourites-group');
+      if (favSection) favSection.style.display = '';
       return;
+    }
+
+    // Search favourites section
+    const favSection = this.container.querySelector('.favourites-group');
+    if (favSection) {
+      let hasVisible = false;
+      favSection.querySelectorAll('.session-item').forEach(item => {
+        const title = (item.querySelector('.session-title')?.textContent || '').toLowerCase();
+        const matches = title.includes(this.searchQuery);
+        item.classList.toggle('hidden', !matches);
+        if (matches) hasVisible = true;
+      });
+      favSection.style.display = hasVisible ? '' : 'none';
     }
 
     this.container.querySelectorAll('.project-group').forEach(group => {
       let hasVisible = false;
-
       group.querySelectorAll('.session-item').forEach(item => {
         const title = (item.querySelector('.session-title')?.textContent || '').toLowerCase();
         const matches = title.includes(this.searchQuery);
         item.classList.toggle('hidden', !matches);
         if (matches) hasVisible = true;
       });
-
       group.style.display = hasVisible ? '' : 'none';
     });
   }
@@ -65,9 +102,140 @@ export class SessionSidebar {
 
   clearActive() {
     this.activeSessionFile = null;
-    this.container.querySelectorAll('.session-item').forEach(el => {
-      el.classList.remove('active');
+    this.container.querySelectorAll('.session-item').forEach(el => el.classList.remove('active'));
+  }
+
+  // ═══════════════════════════════════════
+  // Context Menu
+  // ═══════════════════════════════════════
+
+  showContextMenu(e, session, project, itemEl) {
+    e.preventDefault();
+    this.closeContextMenu();
+
+    const isFav = this.isFavourite(session.filePath);
+    const menu = document.createElement('div');
+    menu.className = 'session-context-menu';
+
+    const items = [
+      { icon: isFav ? '★' : '☆', label: isFav ? 'Unfavourite' : 'Favourite', action: () => this.toggleFavourite(session.filePath) },
+      { icon: '✎', label: 'Rename', action: () => this.startRename(itemEl) },
+      { icon: '📋', label: 'Export HTML', action: () => this.exportSession(session) },
+    ];
+
+    for (const item of items) {
+      const row = document.createElement('div');
+      row.className = 'context-menu-item';
+      row.innerHTML = `<span class="context-menu-icon">${item.icon}</span>${item.label}`;
+      row.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        this.closeContextMenu();
+        item.action();
+      });
+      menu.appendChild(row);
+    }
+
+    // Position
+    document.body.appendChild(menu);
+    const rect = menu.getBoundingClientRect();
+    let x = e.clientX;
+    let y = e.clientY;
+    if (x + rect.width > window.innerWidth) x = window.innerWidth - rect.width - 8;
+    if (y + rect.height > window.innerHeight) y = window.innerHeight - rect.height - 8;
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
+
+    this.contextMenu = menu;
+  }
+
+  closeContextMenu() {
+    if (this.contextMenu) {
+      this.contextMenu.remove();
+      this.contextMenu = null;
+    }
+  }
+
+  startRename(itemEl) {
+    const titleEl = itemEl.querySelector('.session-title');
+    if (!titleEl) return;
+    const currentName = titleEl.textContent;
+
+    const input = document.createElement('input');
+    input.className = 'session-rename-input';
+    input.value = currentName;
+    titleEl.replaceWith(input);
+    input.focus();
+    input.select();
+
+    const commit = async () => {
+      const newName = input.value.trim();
+      if (newName && newName !== currentName) {
+        try {
+          await fetch('/api/rpc', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'set_session_name', name: newName }),
+          });
+        } catch { /* silent */ }
+      }
+      const newTitle = document.createElement('div');
+      newTitle.className = 'session-title';
+      newTitle.title = newName || currentName;
+      newTitle.textContent = newName || currentName;
+      input.replaceWith(newTitle);
+    };
+
+    input.addEventListener('blur', commit);
+    input.addEventListener('keydown', (ke) => {
+      if (ke.key === 'Enter') { ke.preventDefault(); input.blur(); }
+      if (ke.key === 'Escape') { input.value = currentName; input.blur(); }
     });
+  }
+
+  async exportSession(session) {
+    try {
+      const data = await (await fetch('/api/rpc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'export_html' }),
+      })).json();
+      if (data?.success && data.data?.path) {
+        window.open(`/api/sessions/${encodeURIComponent(data.data.path)}`);
+      }
+    } catch { /* silent */ }
+  }
+
+  // ═══════════════════════════════════════
+  // Render
+  // ═══════════════════════════════════════
+
+  buildSessionItem(session, project) {
+    const item = document.createElement('div');
+    item.className = 'session-item';
+    item.dataset.filePath = session.filePath;
+
+    if (session.filePath === this.activeSessionFile) {
+      item.classList.add('active');
+    }
+
+    const title = session.name || session.firstMessage || 'Empty session';
+    const time = this.formatTime(session.timestamp);
+    const tmuxTag = session.tmux ? '<span class="session-tag tmux-tag">tmux</span>' : '';
+    const favIcon = this.isFavourite(session.filePath) ? '<span class="session-fav-icon">★</span>' : '';
+
+    item.innerHTML = `
+      <div class="session-title-row">
+        ${favIcon}
+        <div class="session-title" title="${this.escapeHtml(title)}">${this.escapeHtml(title)}</div>
+        ${tmuxTag}
+      </div>
+      <div class="session-meta">${time}</div>
+    `;
+
+    item.addEventListener('click', () => this.onSessionSelect(session, project));
+    item.addEventListener('contextmenu', (e) => this.showContextMenu(e, session, project, item));
+
+    return item;
   }
 
   render() {
@@ -78,17 +246,43 @@ export class SessionSidebar {
 
     this.container.innerHTML = '';
 
+    // Favourites section — collect from all projects
+    const favSessions = [];
+    for (const project of this.projects) {
+      for (const session of project.sessions) {
+        if (this.isFavourite(session.filePath)) {
+          favSessions.push({ session, project });
+        }
+      }
+    }
+
+    if (favSessions.length > 0) {
+      const favGroup = document.createElement('div');
+      favGroup.className = 'favourites-group';
+
+      const header = document.createElement('div');
+      header.className = 'project-header favourites-header';
+      header.innerHTML = `<span class="fav-star">★</span> <span>Favourites</span> <span class="project-count">${favSessions.length}</span>`;
+      favGroup.appendChild(header);
+
+      const sessionsDiv = document.createElement('div');
+      sessionsDiv.className = 'project-sessions';
+      for (const { session, project } of favSessions) {
+        sessionsDiv.appendChild(this.buildSessionItem(session, project));
+      }
+      favGroup.appendChild(sessionsDiv);
+      this.container.appendChild(favGroup);
+    }
+
+    // Regular project groups
     for (const project of this.projects) {
       const group = document.createElement('div');
       group.className = 'project-group';
-
       const isCollapsed = this.collapsedProjects.has(project.dirName);
 
-      // Project header
       const header = document.createElement('div');
       header.className = `project-header${isCollapsed ? ' collapsed' : ''}`;
 
-      // Show last path component for brevity
       const pathParts = project.path.split('/').filter(Boolean);
       const shortPath = pathParts.length > 0 ? pathParts[pathParts.length - 1] : project.path;
 
@@ -110,89 +304,18 @@ export class SessionSidebar {
 
       group.appendChild(header);
 
-      // Sessions list
       const sessionsDiv = document.createElement('div');
       sessionsDiv.className = `project-sessions${isCollapsed ? ' collapsed' : ''}`;
 
       for (const session of project.sessions) {
-        const item = document.createElement('div');
-        item.className = 'session-item';
-        item.dataset.filePath = session.filePath;
-
-        if (session.filePath === this.activeSessionFile) {
-          item.classList.add('active');
-        }
-
-        const title = session.name || session.firstMessage || 'Empty session';
-        const time = this.formatTime(session.timestamp);
-
-        const tmuxTag = session.tmux ? '<span class="session-tag tmux-tag">tmux</span>' : '';
-
-        item.innerHTML = `
-          <div class="session-title-row">
-            <div class="session-title" title="${this.escapeHtml(title)}">${this.escapeHtml(title)}</div>
-            ${tmuxTag}
-            <button class="session-rename-btn" title="Rename">✎</button>
-          </div>
-          <div class="session-meta">${time}</div>
-        `;
-
-        item.addEventListener('click', (e) => {
-          if (e.target.closest('.session-rename-btn')) return;
-          this.onSessionSelect(session, project);
-        });
-
-        item.querySelector('.session-rename-btn').addEventListener('click', (e) => {
-          e.stopPropagation();
-          const titleEl = item.querySelector('.session-title');
-          const renameBtn = item.querySelector('.session-rename-btn');
-          const currentName = titleEl.textContent;
-
-          const input = document.createElement('input');
-          input.className = 'session-rename-input';
-          input.value = currentName;
-          titleEl.replaceWith(input);
-          renameBtn.style.display = 'none';
-          input.focus();
-          input.select();
-
-          const commit = async () => {
-            const newName = input.value.trim();
-            if (newName && newName !== currentName) {
-              try {
-                await fetch('/api/rpc', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ type: 'set_session_name', name: newName }),
-                });
-              } catch (err) { /* silent */ }
-            }
-            const newTitle = document.createElement('div');
-            newTitle.className = 'session-title';
-            newTitle.title = newName || currentName;
-            newTitle.textContent = newName || currentName;
-            input.replaceWith(newTitle);
-            renameBtn.style.display = '';
-          };
-
-          input.addEventListener('blur', commit);
-          input.addEventListener('keydown', (ke) => {
-            if (ke.key === 'Enter') { ke.preventDefault(); input.blur(); }
-            if (ke.key === 'Escape') { input.value = currentName; input.blur(); }
-          });
-        });
-
-        sessionsDiv.appendChild(item);
+        sessionsDiv.appendChild(this.buildSessionItem(session, project));
       }
 
       group.appendChild(sessionsDiv);
       this.container.appendChild(group);
     }
 
-    // Re-apply search filter if active
-    if (this.searchQuery) {
-      this.applySearch();
-    }
+    if (this.searchQuery) this.applySearch();
   }
 
   formatTime(isoTimestamp) {

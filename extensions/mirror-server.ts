@@ -404,6 +404,25 @@ export default function (pi: ExtensionAPI) {
           break;
         }
 
+        case "export_html": {
+          if (!ctx) {
+            sendTo(ws, error("export_html", "No context available"));
+            break;
+          }
+          try {
+            const outputPath = command.outputPath || path.join(
+              process.env.HOME || "/tmp",
+              "Downloads",
+              `pi-session-${new Date().toISOString().replace(/[:.]/g, "-")}.html`
+            );
+            await ctx.exportHTML(outputPath);
+            sendTo(ws, success("export_html", { path: outputPath }));
+          } catch (e: any) {
+            sendTo(ws, error("export_html", e.message));
+          }
+          break;
+        }
+
         // ─── Sync ───
         case "mirror_sync_request": {
           if (ctx) {
