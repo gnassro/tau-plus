@@ -88,41 +88,41 @@
   --bg-glass-hover: rgba(255, 255, 255, 0.05);
   --bg-glass-active: rgba(255, 255, 255, 0.07);
   --bg-glass-strong: rgba(255, 255, 255, 0.04);
-  --bg-frosted: rgba(0, 0, 0, 0.85);
+  --bg-frosted: rgba(0, 0, 0, 0.90);
 
-  --text-primary: rgba(255, 255, 255, 0.90);
-  --text-secondary: rgba(255, 255, 255, 0.50);
-  --text-dim: rgba(255, 255, 255, 0.22);
-  --text-ghost: rgba(255, 255, 255, 0.10);
+  --text-primary: rgba(255, 255, 255, 0.85);
+  --text-secondary: rgba(255, 255, 255, 0.45);
+  --text-dim: rgba(255, 255, 255, 0.20);
+  --text-ghost: rgba(255, 255, 255, 0.08);
 
-  --accent: #8b3a42;
-  --accent-glow: rgba(139, 58, 66, 0.15);
-  --accent-subtle: rgba(139, 58, 66, 0.08);
-  --accent-text: #b05060;
+  --accent: #5a7a9a;
+  --accent-glow: rgba(90, 122, 154, 0.10);
+  --accent-subtle: rgba(90, 122, 154, 0.06);
+  --accent-text: #7a9aba;
 
-  --user-bubble: rgba(139, 58, 66, 0.10);
+  --user-bubble: rgba(255, 255, 255, 0.04);
   --user-bubble-text: var(--text-primary);
 
-  --tool-accent: #5a3a5e;
-  --tool-accent-text: #907094;
-  --tool-bg: rgba(90, 58, 94, 0.05);
+  --tool-accent: #3a4a5a;
+  --tool-accent-text: #6a7a8a;
+  --tool-bg: rgba(255, 255, 255, 0.02);
 
-  --thinking-accent: #3a5a7a;
-  --thinking-accent-text: #6a9ac4;
-  --thinking-bg: rgba(58, 90, 122, 0.05);
+  --thinking-accent: #3a4a5a;
+  --thinking-accent-text: #6a7a8a;
+  --thinking-bg: rgba(255, 255, 255, 0.02);
 
-  --border: rgba(255, 255, 255, 0.05);
-  --border-hover: rgba(255, 255, 255, 0.09);
-  --border-bright: rgba(255, 255, 255, 0.14);
+  --border: rgba(255, 255, 255, 0.04);
+  --border-hover: rgba(255, 255, 255, 0.08);
+  --border-bright: rgba(255, 255, 255, 0.12);
 
   --shadow-sm: none;
   --shadow-md: none;
   --shadow-lg: none;
-  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  --shadow-inset: none;
 
-  --orb-1: radial-gradient(900px circle at 10% 20%, rgba(139, 58, 66, 0.04), transparent 70%);
-  --orb-2: radial-gradient(800px circle at 90% 80%, rgba(90, 58, 94, 0.03), transparent 70%);
-  --orb-3: radial-gradient(700px circle at 50% 50%, rgba(58, 90, 122, 0.02), transparent 70%);
+  --orb-1: radial-gradient(900px circle at 10% 20%, rgba(90, 122, 154, 0.02), transparent 70%);
+  --orb-2: radial-gradient(800px circle at 90% 80%, rgba(70, 100, 130, 0.015), transparent 70%);
+  --orb-3: radial-gradient(700px circle at 50% 50%, rgba(60, 90, 120, 0.01), transparent 70%);
 }
 
 /* ─── Terracotta — warm light ─── */
