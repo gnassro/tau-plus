@@ -87,11 +87,11 @@
   --text-secondary: rgba(0, 0, 0, 0.62);
   --text-dim: rgba(0, 0, 0, 0.38);
   --text-ghost: rgba(0, 0, 0, 0.14);
-  --accent: #622619;
-  --accent-glow: rgba(98, 38, 25, 0.15);
-  --accent-subtle: rgba(98, 38, 25, 0.08);
-  --accent-text: #7a3020;
-  --user-bubble: #622619;
+  --accent: #b06a48;
+  --accent-glow: rgba(176, 106, 72, 0.15);
+  --accent-subtle: rgba(176, 106, 72, 0.08);
+  --accent-text: #a05e3e;
+  --user-bubble: #b06a48;
   --user-bubble-text: white;
   --border: rgba(0, 0, 0, 0.06);
   --border-hover: rgba(0, 0, 0, 0.1);
@@ -100,9 +100,9 @@
   --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.12);
   --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.8);
-  --orb-1: radial-gradient(900px circle at 10% 20%, rgba(98, 38, 25, 0.06), transparent 70%);
-  --orb-2: radial-gradient(800px circle at 90% 80%, rgba(80, 30, 30, 0.04), transparent 70%);
-  --orb-3: radial-gradient(700px circle at 50% 50%, rgba(60, 25, 25, 0.03), transparent 70%);
+  --orb-1: radial-gradient(900px circle at 10% 20%, rgba(176, 106, 72, 0.06), transparent 70%);
+  --orb-2: radial-gradient(800px circle at 90% 80%, rgba(140, 100, 70, 0.04), transparent 70%);
+  --orb-3: radial-gradient(700px circle at 50% 50%, rgba(100, 85, 65, 0.03), transparent 70%);
 }
 
 body {
