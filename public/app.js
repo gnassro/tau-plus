@@ -1236,3 +1236,4 @@ sidebar.loadSessions().then(() => {
 });
 
 console.log('🚀 Tau initialized');
+}
