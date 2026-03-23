@@ -3,3 +3,4 @@ node_modules/
 
 # Pi session exports
 pi-session-*.html
+/.idea/

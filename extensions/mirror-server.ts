@@ -785,6 +785,26 @@ export default function (pi: ExtensionAPI) {
           break;
         }
 
+        case "get_project_files": {
+          const { execSync } = require("node:child_process");
+          let files = [];
+          const dirPath = ctx ? (ctx.sessionManager.getEntries().find((e: any) => e.type === "session")?.cwd || process.cwd()) : process.cwd();
+          try {
+            const output = execSync('git ls-files', { cwd: dirPath, encoding: 'utf8' });
+            files = output.trim().split('\n').filter(Boolean);
+          } catch (e) {
+            try {
+              const output = execSync('find . -type f -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/dist/*" -not -path "*/build/*" | sed "s|^./||"', { cwd: dirPath, encoding: 'utf8' });
+              files = output.trim().split('\n').filter(Boolean);
+            } catch (err) {
+              files = [];
+            }
+          }
+          if (files.length > 2000) files = files.slice(0, 2000);
+          sendTo(ws, success("get_project_files", { files }));
+          break;
+        }
+
         default: {
           sendTo(ws, error(command.type, `Unknown command: ${command.type}`));
         }

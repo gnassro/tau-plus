@@ -452,18 +452,180 @@ chatForm.addEventListener('submit', (e) => {
   sendMessage();
 });
 
-messageInput.addEventListener('keydown', (e) => {
+// ═══════════════════════════════════════
+// @ File Autocomplete
+// ═══════════════════════════════════════
+let projectFilesCache = null;
+let autocompleteActive = false;
+let autocompleteMatchStart = -1;
+let autocompleteSelectedIndex = 0;
+let filteredFiles = [];
+let selectedContextFiles = [];
+
+const autocompleteDropdown = document.createElement('div');
+autocompleteDropdown.id = 'autocomplete-dropdown';
+autocompleteDropdown.className = 'autocomplete-dropdown hidden';
+// Append dropdown to the input-bubble so it's positioned relatively
+document.querySelector('.input-bubble').appendChild(autocompleteDropdown);
+
+async function fetchProjectFiles() {
+  if (projectFilesCache) return projectFilesCache;
+  try {
+    const resp = await fetch('/api/rpc', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'get_project_files' })
+    });
+    const data = await resp.json();
+    if (data.success && data.data && data.data.files) {
+      projectFilesCache = data.data.files;
+      return projectFilesCache;
+    }
+  } catch (err) {
+    console.error('Failed to fetch project files', err);
+  }
+  return [];
+}
+
+function closeAutocomplete() {
+  autocompleteActive = false;
+  autocompleteDropdown.classList.add('hidden');
+  autocompleteDropdown.innerHTML = '';
+}
+
+function updateAutocompleteDropdown() {
+  if (!autocompleteActive || filteredFiles.length === 0) {
+    closeAutocomplete();
+    return;
+  }
+  
+  autocompleteDropdown.innerHTML = '';
+  autocompleteDropdown.classList.remove('hidden');
+  
+  filteredFiles.forEach((file, index) => {
+    const div = document.createElement('div');
+    div.className = 'autocomplete-item' + (index === autocompleteSelectedIndex ? ' active' : '');
+    div.textContent = file;
+    div.onmousedown = (e) => {
+      e.preventDefault(); // keep focus on textarea
+      insertAutocompleteFile(file);
+    };
+    autocompleteDropdown.appendChild(div);
+  });
+
+  // Scroll active item into view
+  const activeItem = autocompleteDropdown.querySelector('.active');
+  if (activeItem) {
+    activeItem.scrollIntoView({ block: 'nearest' });
+  }
+}
+
+function insertAutocompleteFile(file) {
+  const sel = window.getSelection();
+  if (!sel.rangeCount) return;
+  const range = sel.getRangeAt(0);
+  
+  if (range.startContainer.nodeType === Node.TEXT_NODE) {
+    const text = range.startContainer.textContent.substring(0, range.startOffset);
+    const match = text.match(/@([^\s]*)$/);
+    if (match) {
+      // Delete the typed @word
+      range.setStart(range.startContainer, range.startOffset - match[0].length);
+      range.deleteContents();
+      
+      const fileName = file.split('/').pop();
+      const chipHtml = `<span class="context-chip" contenteditable="false" data-path="${file}">${fileName}<button type="button" class="remove-chip" tabindex="-1" onclick="this.parentElement.remove(); document.getElementById('message-input').focus();" aria-label="Remove context"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button></span>&nbsp;`;
+      
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = chipHtml;
+      
+      const frag = document.createDocumentFragment();
+      let node, lastNode;
+      while ((node = tempDiv.firstChild)) {
+        lastNode = frag.appendChild(node);
+      }
+      range.insertNode(frag);
+      
+      if (lastNode) {
+        range.setStartAfter(lastNode);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    }
+  }
+  
+  closeAutocomplete();
+  messageInput.dispatchEvent(new Event('input'));
+}
+
+messageInput.addEventListener('keydown', async (e) => {
+  if (autocompleteActive) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      autocompleteSelectedIndex = (autocompleteSelectedIndex + 1) % filteredFiles.length;
+      updateAutocompleteDropdown();
+      return;
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      autocompleteSelectedIndex = (autocompleteSelectedIndex - 1 + filteredFiles.length) % filteredFiles.length;
+      updateAutocompleteDropdown();
+      return;
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      insertAutocompleteFile(filteredFiles[autocompleteSelectedIndex]);
+      return;
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      closeAutocomplete();
+      return;
+    }
+  }
+  
   // Enter sends, Shift+Enter inserts newline
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
     sendMessage();
+  } else if (e.key === 'Enter' && e.shiftKey) {
+    e.preventDefault();
+    document.execCommand('insertText', false, '\n');
   }
 });
 
-// Auto-resize textarea
-messageInput.addEventListener('input', () => {
+// Auto-resize and Autocomplete triggering
+messageInput.addEventListener('input', async () => {
   messageInput.style.height = 'auto';
   messageInput.style.height = Math.min(messageInput.scrollHeight, 200) + 'px';
+
+  let currentWord = '';
+  const sel = window.getSelection();
+  if (sel.rangeCount > 0) {
+    const range = sel.getRangeAt(0);
+    if (range.startContainer.nodeType === Node.TEXT_NODE) {
+      const textBeforeCursor = range.startContainer.textContent.substring(0, range.startOffset);
+      const words = textBeforeCursor.split(/[\s\n]+/);
+      currentWord = words[words.length - 1];
+    }
+  }
+
+  if (currentWord.startsWith('@')) {
+    autocompleteMatchStart = -1; // Not used anymore, done via Selection API
+    const query = currentWord.substring(1).toLowerCase();
+    
+    const files = await fetchProjectFiles();
+    
+    filteredFiles = files.filter(f => f.toLowerCase().includes(query)).slice(0, 50);
+    
+    if (filteredFiles.length > 0) {
+      autocompleteActive = true;
+      autocompleteSelectedIndex = 0;
+      updateAutocompleteDropdown();
+    } else {
+      closeAutocomplete();
+    }
+  } else {
+    closeAutocomplete();
+  }
 });
 
 // ═══════════════════════════════════════
@@ -553,11 +715,20 @@ messageInput.addEventListener('drop', (e) => {
 // Paste images
 messageInput.addEventListener('paste', (e) => {
   const files = [];
+  let isImage = false;
   for (const item of e.clipboardData.items) {
-    if (!item.type.startsWith('image/')) continue;
-    files.push(item.getAsFile());
+    if (item.type.startsWith('image/')) {
+      files.push(item.getAsFile());
+      isImage = true;
+    }
   }
   if (files.length) addImageFiles(files);
+  
+  // Intercept text paste to insert plain text only
+  if (!isImage && e.clipboardData.getData('text/plain')) {
+    e.preventDefault();
+    document.execCommand('insertText', false, e.clipboardData.getData('text/plain'));
+  }
 });
 
 function renderImagePreviews() {
@@ -588,11 +759,33 @@ function renderImagePreviews() {
 
 let messageQueue = [];
 
-function sendMessage() {
-  const message = messageInput.value.trim();
-  if (!message) return;
+function getEditorText() {
+  const clone = messageInput.cloneNode(true);
+  const chips = clone.querySelectorAll('.context-chip');
+  chips.forEach(chip => {
+    const path = chip.getAttribute('data-path');
+    const textNode = document.createTextNode('@' + path + ' ');
+    chip.parentNode.replaceChild(textNode, chip);
+  });
+  
+  // Replace <br> and <div> with newlines
+  const divs = clone.querySelectorAll('div, p');
+  divs.forEach(d => {
+    d.parentNode.insertBefore(document.createTextNode('\n'), d);
+  });
+  const brs = clone.querySelectorAll('br');
+  brs.forEach(br => {
+    br.parentNode.replaceChild(document.createTextNode('\n'), br);
+  });
+  
+  return clone.textContent.trim();
+}
 
-  messageInput.value = '';
+function sendMessage() {
+  let message = getEditorText();
+  if (!message && pendingImages.length === 0) return;
+
+  messageInput.innerHTML = '';
   messageInput.style.height = 'auto';
 
   const cmd = {
@@ -1717,7 +1910,7 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       }
     }
     // Show live transcription in the input
-    messageInput.value = finalTranscript + interimTranscript;
+    messageInput.innerText = finalTranscript + interimTranscript;
     messageInput.dispatchEvent(new Event('input'));
   });
 
@@ -1742,7 +1935,7 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
   });
 
   function startRecording() {
-    finalTranscript = messageInput.value; // Append to existing text
+    finalTranscript = getEditorText(); // Append to existing text
     interimTranscript = '';
     isRecording = true;
     micBtn.classList.add('recording');
@@ -1757,7 +1950,7 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     micBtn.title = 'Voice input';
     try { recognition.stop(); } catch {}
     // Commit final transcript
-    messageInput.value = finalTranscript;
+    messageInput.innerText = finalTranscript;
     messageInput.dispatchEvent(new Event('input'));
     messageInput.focus();
   }
