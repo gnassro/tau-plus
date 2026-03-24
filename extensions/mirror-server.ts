@@ -10,7 +10,8 @@
  * - Sends full state snapshot on client connect (messages, model, etc.)
  */
 
-import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext, ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
+import { SessionManager, ExtensionRunner } from "@mariozechner/pi-coding-agent";
 import { WebSocketServer, WebSocket } from "ws";
 import * as http from "node:http";
 import * as fs from "node:fs";
@@ -214,6 +215,18 @@ export default function (pi: ExtensionAPI) {
 
   // Store latest context reference for use in command handlers
   let latestCtx: ExtensionContext | null = null;
+  // Captured from command handlers — stable reference to AgentSession.switchSession()
+  let switchSessionFn: ((sessionPath: string) => Promise<{ cancelled: boolean }>) | null = null;
+
+  // Monkey-patch ExtensionRunner to capture switchSession early
+  // This avoids requiring the user to type a command in the terminal first.
+  const originalBind = ExtensionRunner.prototype.bindCommandContext;
+  ExtensionRunner.prototype.bindCommandContext = function (actions) {
+    if (actions && typeof actions.switchSession === "function") {
+      switchSessionFn = actions.switchSession.bind(actions); // Wait, bind to actions?
+    }
+    return originalBind.apply(this, arguments as any);
+  };
 
   // Pending RPC-style requests from browser (id -> resolver)
   const pendingRequests = new Map<string, (response: any) => void>();
@@ -328,6 +341,24 @@ export default function (pi: ExtensionAPI) {
   });
 
   // ═══════════════════════════════════════
+  // /tauresume — in-process session switching
+  // ═══════════════════════════════════════
+  pi.registerCommand("tauresume", {
+    description: "Switch to a different session (used by Tau UI)",
+    handler: async (args, ctx) => {
+      const sessionPath = args.trim();
+      if (!sessionPath) {
+        ctx.ui.notify("Usage: /tauresume <session-file-path>", "warning");
+        return;
+      }
+      const result = await ctx.switchSession(sessionPath);
+      if (result.cancelled) {
+        ctx.ui.notify("Session switch was cancelled", "warning");
+      }
+    },
+  });
+
+  // ═══════════════════════════════════════
   // Event forwarding — subscribe to all Pi events
   // ═══════════════════════════════════════
   const eventTypes = [
@@ -363,6 +394,20 @@ export default function (pi: ExtensionAPI) {
     userMessages = [];
     // Update instance registry with new session file
     updateInstanceSession(ctx.sessionManager.getSessionFile() || "");
+  });
+
+  // After a session switch (triggered by /tauresume or in-process switch),
+  // broadcast the new state to all connected browser clients.
+  pi.on("session_switch", async (_event, ctx) => {
+    latestCtx = ctx;
+    turnCount = 0;
+    titleSet = false;
+    userMessages = [];
+    updateInstanceSession(ctx.sessionManager.getSessionFile() || "");
+
+    // Broadcast fresh state snapshot to all browser clients
+    const snapshot = await buildStateSnapshot(ctx);
+    broadcast(snapshot);
   });
 
   pi.on("turn_start", async (_event, _ctx) => {
@@ -564,6 +609,27 @@ export default function (pi: ExtensionAPI) {
         case "abort": {
           if (ctx) ctx.abort();
           sendTo(ws, success("abort"));
+          break;
+        }
+
+        // ─── Session Switch (in-process, replaces iTerm2 spawn) ───
+        case "switch_session": {
+          const sessionPath = command.sessionPath;
+          if (!sessionPath) {
+            sendTo(ws, error("switch_session", "sessionPath required"));
+            break;
+          }
+          if (!switchSessionFn) {
+            sendTo(ws, error("switch_session", "Session switching not ready (InteractiveMode hasn't bound context yet)."));
+            break;
+          }
+          try {
+            const result = await switchSessionFn(sessionPath);
+            // session_switch event handler will broadcast new state
+            sendTo(ws, success("switch_session", { cancelled: result.cancelled }));
+          } catch (e: any) {
+            sendTo(ws, error("switch_session", e.message || "Switch failed"));
+          }
           break;
         }
 
@@ -1071,48 +1137,6 @@ img{border-radius:12px}a{color:#b87a5c;font-size:18px;margin-top:16px}p{color:rg
       return;
     }
 
-    // Session switch — spawns a new terminal window and exits current
-    if (urlPath === "/api/sessions/switch" && req.method === "POST") {
-      let body = "";
-      req.on("data", (chunk: Buffer) => { body += chunk.toString(); });
-      req.on("end", () => {
-        try {
-          const { sessionFile } = JSON.parse(body);
-          if (!sessionFile) {
-            res.writeHead(400); res.end(JSON.stringify({ error: "sessionFile required" }));
-            return;
-          }
-          const { execSync } = require("node:child_process");
-          const cwdEscaped = process.cwd().replace(/'/g, "'\\''");
-          const sessionEscaped = sessionFile.replace(/'/g, "'\\''");
-          
-          // Spawn a new iTerm2 window
-          execSync(`osascript -e 'tell app "iTerm2" to create window with default profile command "cd '"'"'${cwdEscaped}'"'"' && pi --resume '"'"'${sessionEscaped}'"'"'"'`);
-          
-          // Wait until the new instance registers, max 10 seconds
-          let attempts = 0;
-          const checkInterval = setInterval(() => {
-            attempts++;
-            const instances = getRunningInstances();
-            const inst = instances.find(i => i.sessionFile === sessionFile && i.pid !== process.pid);
-            if (inst) {
-              clearInterval(checkInterval);
-              res.writeHead(200, { "Content-Type": "application/json" });
-              res.end(JSON.stringify({ ok: true, port: inst.port }));
-              setTimeout(() => process.exit(0), 1000);
-            } else if (attempts >= 20) {
-              clearInterval(checkInterval);
-              res.writeHead(500, { "Content-Type": "application/json" });
-              res.end(JSON.stringify({ error: "Timeout waiting for new instance to register" }));
-            }
-          }, 500);
-        } catch (e: any) {
-          res.writeHead(500); res.end(JSON.stringify({ error: e.message }));
-        }
-      });
-      return;
-    }
-
     // Memoryd check
     res.writeHead(404, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ error: "Not found" }));
@@ -1217,50 +1241,28 @@ img{border-radius:12px}a{color:#b87a5c;font-size:18px;margin-top:16px}p{color:rg
 
   async function serveSessionsList(res: http.ServerResponse) {
     try {
-      if (!fs.existsSync(SESSIONS_DIR)) {
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ projects: [] }));
-        return;
-      }
+      const cwd = process.cwd();
+      const sessions = await SessionManager.list(cwd);
 
-      const tmuxFiles = getTmuxSessionFiles();
-      const readline = await import("node:readline");
-      const dirEntries = fs.readdirSync(SESSIONS_DIR, { withFileTypes: true });
-      const projects: any[] = [];
+      // Transform SessionInfo[] to match the frontend's expected shape
+      const formattedSessions = sessions.map(s => ({
+        id: s.id,
+        timestamp: s.created.toISOString(),
+        name: s.name || null,
+        firstMessage: s.firstMessage || null,
+        cwd: s.cwd || cwd,
+        filePath: s.path,
+        file: path.basename(s.path),
+        mtime: s.modified.getTime(),
+      }));
 
-      for (const dir of dirEntries) {
-        if (!dir.isDirectory()) continue;
+      // Sort by most recent first
+      formattedSessions.sort((a, b) => b.mtime - a.mtime);
 
-        const projectDir = path.join(SESSIONS_DIR, dir.name);
-        const files = fs.readdirSync(projectDir).filter(f => f.endsWith(".jsonl"));
-        const decodedPath = dir.name.replace(/^--/, "/").replace(/--$/, "").replace(/-/g, "/");
-
-        const sessions: any[] = [];
-
-        for (const file of files) {
-          try {
-            const filePath = path.join(projectDir, file);
-            const parsed = await parseSessionFile(filePath, readline);
-            if (parsed) {
-              const stat = fs.statSync(filePath);
-              const isTmux = tmuxFiles.has(filePath);
-              sessions.push({ ...parsed, file, filePath, mtime: stat.mtimeMs, ...(isTmux && { tmux: true }) });
-            }
-          } catch { /* skip */ }
-        }
-
-        sessions.sort((a, b) => b.mtime - a.mtime);
-
-        if (sessions.length > 0) {
-          projects.push({ path: decodedPath, dirName: dir.name, sessions });
-        }
-      }
-
-      projects.sort((a, b) => {
-        const aTime = a.sessions[0]?.mtime || 0;
-        const bTime = b.sessions[0]?.mtime || 0;
-        return bTime - aTime;
-      });
+      // Return as a single project group for the current cwd
+      const projects = formattedSessions.length > 0
+        ? [{ path: cwd, dirName: path.basename(cwd), sessions: formattedSessions }]
+        : [];
 
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ projects }));

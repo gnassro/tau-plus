@@ -5,3 +5,4 @@ node_modules/
 pi-session-*.html
 /.idea/
 /public_backup/
+/tsconfig.json

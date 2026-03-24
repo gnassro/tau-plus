@@ -208,6 +208,15 @@ wsClient.addEventListener('serverError', (e) => {
   messageRenderer.renderError(e.detail.message);
 });
 
+// Handle RPC responses (e.g. switch_session errors)
+wsClient.addEventListener('rpcResponse', (e) => {
+  const resp = e.detail;
+  if (!resp.success && resp.error) {
+    console.error(`[App] RPC error (${resp.command}):`, resp.error);
+    messageRenderer.renderError(`${resp.command}: ${resp.error}`);
+  }
+});
+
 // Mirror mode: receive full state snapshot on connect
 wsClient.addEventListener('mirrorSync', (e) => {
   handleMirrorSync(e.detail);
@@ -1079,48 +1088,14 @@ async function switchSession(sessionFile, session = null, project = null) {
       return;
     }
 
-    messageRenderer.renderSystemMessage('Checking session instances...');
+    messageRenderer.renderSystemMessage('Switching session...');
 
-    // Fetch fresh instances list
-    const res = await fetch('/api/instances');
-    const data = await res.json();
-    const liveInstances = data.instances || [];
+    // Send switch_session command via WebSocket (in-process switch)
+    wsClient.send({ type: 'switch_session', sessionPath: sessionFile });
 
-    const otherInstance = liveInstances.find(i => i.sessionFile === sessionFile);
-    if (otherInstance) {
-      if (otherInstance.port === parseInt(location.port || '80', 10) || (location.port === '' && otherInstance.port === 3001)) {
-        // It's the current one
-        wsClient.send({ type: 'mirror_sync_request' });
-        return;
-      }
-      
-      messageRenderer.renderSystemMessage('Redirecting to active session instance...');
-      window.location.href = `http://${location.hostname}:${otherInstance.port}`;
-      return;
-    }
-
-    // It's not running anywhere. Ask server to spawn it.
-    messageRenderer.renderSystemMessage('Spawning Pi terminal for this session (waiting for iTerm2)...');
-    
-    const switchRes = await fetch('/api/sessions/switch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionFile })
-    });
-    
-    if (!switchRes.ok) {
-      const err = await switchRes.json();
-      messageRenderer.renderError(`Failed to switch session: ${err.error || 'Unknown error'}`);
-      return;
-    }
-
-    const switchData = await switchRes.json();
-    if (switchData.ok && switchData.port) {
-      messageRenderer.renderSystemMessage('Connecting to new session...');
-      window.location.href = `http://${location.hostname}:${switchData.port}`;
-    } else {
-      messageRenderer.renderError('Server responded ok, but no port provided.');
-    }
+    // The server will respond with a 'response' message,
+    // then broadcast a mirror_sync with the new session state.
+    // handleMirrorSync() will update the UI when it arrives.
 
   } catch (error) {
     console.error('[App] Failed to switch session:', error);
@@ -1140,6 +1115,11 @@ function handleMirrorSync(data) {
   viewingActiveSession = true;
   updateMirrorInputState();
   updateMirrorLiveIndicator();
+
+  // Update sidebar to highlight the active session
+  if (data.sessionFile && sidebar) {
+    sidebar.setActive(data.sessionFile);
+  }
 
   // Update model display
   if (data.model) {
@@ -1174,6 +1154,11 @@ function handleMirrorSync(data) {
 
   updateCostDisplay();
   updateTokenUsage();
+
+  // Refresh session list in sidebar (session may have been switched)
+  if (sidebar) {
+    sidebar.loadSessions();
+  }
 }
 
 // Mark all live sessions in the sidebar with a green dot

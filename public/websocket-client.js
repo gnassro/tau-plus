@@ -127,6 +127,10 @@ export class WebSocketClient extends EventTarget {
       case 'state':
         this.dispatchEvent(new CustomEvent('stateUpdate', { detail: message }));
         break;
+      case 'response':
+        // RPC-style response from server (e.g. switch_session result)
+        this.dispatchEvent(new CustomEvent('rpcResponse', { detail: message }));
+        break;
       case 'error':
         this.dispatchEvent(new CustomEvent('serverError', { detail: message }));
         break;

@@ -11,6 +11,7 @@
   ],
   "author": "deflating",
   "license": "MIT",
+  "type": "module",
   "repository": {
     "type": "git",
     "url": "https://github.com/deflating/tau.git"
