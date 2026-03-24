@@ -18,8 +18,8 @@ Tau connects to your running Pi TUI and gives you a second view in the browser. 
 - **Inline Context Engine** — Type `@` to instantly fuzzy-search project files and inject them as beautiful, interactive UI chips directly into your text cursor.
 - **Smart Code Snippet Injection** — Highlight any text in the center code editor to spawn a floating "Add to Chat" button, injecting the exact file path and line numbers cleanly into your prompt.
 - **Strict Project History** — A dedicated Session History modal that filters your past chats strictly to your active Current Working Directory (CWD).
-- **Live session switching** — Click any historical session, and Tau will seamlessly open a new iTerm2 terminal tab, resume the session, and auto-redirect your browser.
-- **Live mirroring** — streams messages, tool calls, and thinking blocks in real-time
+- **Live session switching** — Click any historical session in the sidebar, and Tau will seamlessly switch your active agent session **in-process** without launching a new terminal tab.
+- **Live mirroring** — streams messages, tool calls, and thinking blocks in real-time. Features a dynamic typing indicator that explicitly tells you when the agent is "Thinking" vs "Working" on a specific tool.
 - **Works on any device** — open it on your phone, tablet, or another monitor
 - **No extra process** — the Pi extension *is* the server
 

@@ -280,7 +280,7 @@ function handleCompactionStart() {
   el.id = 'compaction-indicator';
   el.innerHTML = '<span class="compaction-spinner">⟳</span> Compacting context…';
   messagesContainer.appendChild(el);
-  scrollToBottom();
+  messageRenderer.scrollToBottom();
 }
 
 function handleCompactionEnd(event) {
@@ -298,7 +298,7 @@ function handleCompactionEnd(event) {
 
 function handleAgentStart() {
   state.setStreaming(true);
-  showTypingIndicator(true);
+  showTypingIndicator(true, 'Thinking');
   updateUI();
 }
 
@@ -327,6 +327,7 @@ function handleMessageStart(message) {
       { content: '' },
       true
     );
+    showTypingIndicator(true, 'Typing');
   } else if (message.role === 'user') {
     // In mirror mode, user messages from TUI appear via events
     // Only render if we didn't just send this message ourselves
@@ -356,6 +357,7 @@ function handleMessageUpdate(event) {
     if (currentStreamingElement) {
       messageRenderer.updateStreamingThinking(currentStreamingElement, currentStreamingThinking);
     }
+    showTypingIndicator(true, 'Thinking');
   } else if (assistantMessageEvent.type === 'text_delta') {
     currentStreamingText += assistantMessageEvent.delta;
     if (currentStreamingElement) {
@@ -364,6 +366,7 @@ function handleMessageUpdate(event) {
         currentStreamingText
       );
     }
+    showTypingIndicator(true, 'Typing');
   }
 }
 
@@ -387,6 +390,7 @@ function handleMessageEnd(message) {
     updateCostDisplay();
     updateTokenUsage();
     showNewMessageBadge();
+    showTypingIndicator(true, 'Thinking');
   }
 }
 
@@ -400,6 +404,7 @@ function handleToolExecutionStart(event) {
   });
 
   toolCardRenderer.createToolCard(state.getToolExecution(toolCallId));
+  showTypingIndicator(true, `Working (${toolName})`);
 }
 
 function handleToolExecutionUpdate(event) {
@@ -425,6 +430,7 @@ function handleToolExecutionEnd(event) {
   });
 
   toolCardRenderer.finalizeToolCard(toolCallId, result, isError);
+  showTypingIndicator(true, 'Thinking');
 }
 
 function handleExtensionUIRequest(event) {
@@ -597,7 +603,7 @@ function renderImagePreviews() {
 let messageQueue = [];
 
 function sendMessage(text) {
-  let message = text ?? chatInput.getText();
+  let message = typeof text === 'string' ? text : chatInput.getText();
   if (!message && pendingImages.length === 0) return;
 
   chatInput.clear();
@@ -647,7 +653,7 @@ function renderQueuedMessages() {
     el.className = 'queued-msg';
     el.innerHTML = `
       <span class="queued-msg-label">Queued</span>
-      <span class="queued-msg-text">${escapeHtml(cmd.message)}</span>
+      <span class="queued-msg-text">${escapeHtml(cmd.message)}${cmd.images && cmd.images.length > 0 ? ' <span style="font-size: 10px; opacity: 0.7;">📎 Image attached</span>' : ''}</span>
       <button class="queued-msg-cancel" title="Cancel">×</button>
     `;
     el.querySelector('.queued-msg-cancel').addEventListener('click', () => {
@@ -1155,6 +1161,12 @@ function handleMirrorSync(data) {
   updateCostDisplay();
   updateTokenUsage();
 
+  if (typeof data.isStreaming !== 'undefined') {
+    state.setStreaming(data.isStreaming);
+    showTypingIndicator(data.isStreaming, 'Thinking');
+    updateUI();
+  }
+
   // Refresh session list in sidebar (session may have been switched)
   if (sidebar) {
     sidebar.loadSessions();
@@ -1316,8 +1328,24 @@ function renderSessionHistory(entries) {
 // UI helpers
 // ═══════════════════════════════════════
 
-function showTypingIndicator(show) {
-  typingIndicator.classList.toggle('hidden', !show);
+function showTypingIndicator(show, text = 'Thinking') {
+  const typingTextEl = document.getElementById('typing-text');
+  if (typingTextEl) {
+    typingTextEl.textContent = text;
+  }
+  if (show) {
+    // Ensure it is always the last child in the messages container
+    const messages = document.getElementById('messages');
+    if (messages && typingIndicator) {
+      messages.appendChild(typingIndicator);
+    }
+  }
+  if (typingIndicator) {
+    typingIndicator.classList.toggle('hidden', !show);
+  }
+  if (show && typeof messageRenderer !== 'undefined') {
+    messageRenderer.scrollToBottom();
+  }
 }
 
 function updateCostDisplay() {

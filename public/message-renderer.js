@@ -18,10 +18,15 @@ export class MessageRenderer {
   }
 
   clear() {
+    const typingIndicator = document.getElementById('typing-indicator');
     this.container.innerHTML = '';
+    if (typingIndicator) {
+      this.container.appendChild(typingIndicator);
+    }
   }
 
   renderWelcome() {
+    const typingIndicator = document.getElementById('typing-indicator');
     this.container.innerHTML = `
       <div class="welcome">
         <div class="welcome-icon"><img src="icons/tau-192.png" alt="τ" class="tau-icon-welcome"></div>
@@ -33,6 +38,9 @@ export class MessageRenderer {
         </div>
       </div>
     `;
+    if (typingIndicator) {
+      this.container.appendChild(typingIndicator);
+    }
   }
 
   renderUserMessage(message, isHistory = false) {
@@ -96,10 +104,14 @@ export class MessageRenderer {
 
     const streamingClass = isStreaming ? ' streaming' : '';
 
+    const copyBtnHtml = !isStreaming ? '<button class="message-copy-btn" aria-label="Copy message"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>' : '';
+
     div.innerHTML = `
+      <div class="message-actions-row">
+        ${usageHtml}
+        ${copyBtnHtml}
+      </div>
       <div class="message-content${streamingClass}">${contentHtml}</div>
-      ${usageHtml}
-      ${!isStreaming ? '<button class="message-copy-btn" aria-label="Copy message"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>' : ''}
     `;
 
     if (!isStreaming) this._setupCopyBtn(div);
@@ -182,21 +194,28 @@ export class MessageRenderer {
     }
 
     // Add copy button after streaming finishes
-    if (!messageElement.querySelector('.message-copy-btn')) {
+    let actionsRow = messageElement.querySelector('.message-actions-row');
+    if (!actionsRow) {
+      actionsRow = document.createElement('div');
+      actionsRow.className = 'message-actions-row';
+      messageElement.insertBefore(actionsRow, messageElement.firstChild);
+    }
+
+    if (!actionsRow.querySelector('.message-copy-btn')) {
       const btn = document.createElement('button');
       btn.className = 'message-copy-btn';
       btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-      messageElement.appendChild(btn);
+      actionsRow.appendChild(btn);
       this._setupCopyBtn(messageElement);
     }
 
     // Add usage info if available
     if (usage && usage.cost && usage.cost.total > 0) {
-      if (!messageElement.querySelector('.message-usage')) {
+      if (!actionsRow.querySelector('.message-usage')) {
         const span = document.createElement('span');
         span.className = 'message-usage';
         span.textContent = `$${usage.cost.total.toFixed(4)}`;
-        messageElement.appendChild(span);
+        actionsRow.insertBefore(span, actionsRow.firstChild);
       }
     }
   }

@@ -1726,6 +1726,37 @@ body {
   border: none;
   padding: 4px 0;
   color: var(--text-primary);
+  min-width: 0;
+  width: 100%;
+}
+
+.message.assistant {
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+  width: 100%;
+  gap: 0;
+}
+
+.message.assistant .message-actions-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 2px;
+  min-height: 24px;
+}
+
+.message.assistant .message-copy-btn {
+  position: static;
+  margin: 0;
+}
+
+.message.assistant .message-usage {
+  position: static;
+  margin: 0;
 }
 
 /* Markdown */
@@ -2248,10 +2279,22 @@ body.hide-thinking .thinking-block { display: none !important; }
    ═══════════════════════════════════════════════════════ */
 
 .typing-indicator {
-  padding: 0 24px 8px;
+  padding: 4px 4px 8px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.typing-text {
+  font-weight: 500;
+  color: var(--accent);
+}
+
+.typing-dots {
   display: flex;
   gap: 4px;
-  align-items: center;
 }
 
 .typing-dot {
@@ -2401,16 +2444,26 @@ body.hide-thinking .thinking-block { display: none !important; }
   position: relative;
   display: flex;
   align-items: stretch;
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm), var(--shadow-inset);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+  transition: all var(--duration) var(--ease);
+}
+
+.input-bubble:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow), var(--shadow-sm), var(--shadow-inset);
+  background: var(--bg-glass-hover);
 }
 
 #message-input {
   flex: 1;
-  padding: 12px 44px 12px 18px;
-  background: var(--bg-glass);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  padding: 12px 6px 12px 18px;
+  margin-right: 36px;
   color: var(--text-primary);
-  box-shadow: var(--shadow-sm), var(--shadow-inset);
   font-size: 16px;
   font-family: inherit;
   outline: none;
@@ -2418,16 +2471,14 @@ body.hide-thinking .thinking-block { display: none !important; }
   max-height: 160px;
   line-height: 1.45;
   overflow-y: auto;
-  backdrop-filter: blur(var(--blur));
-  -webkit-backdrop-filter: blur(var(--blur));
-  transition: all var(--duration) var(--ease);
+  border: none;
+  background: transparent;
 }
 
-#message-input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-glow), var(--shadow-sm), var(--shadow-inset);
-  background: var(--bg-glass-hover);
-}
+#message-input::-webkit-scrollbar { width: 4px; height: 4px; }
+#message-input::-webkit-scrollbar-track { background: transparent; }
+#message-input::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+#message-input::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
 
 .input-mic-btn {
   position: absolute;
@@ -2458,12 +2509,13 @@ body.hide-thinking .thinking-block { display: none !important; }
   animation: pulse 1.5s infinite;
 }
 
-#message-input:disabled { opacity: 0.35; cursor: not-allowed; }
+.input-bubble:has(#message-input:disabled) { opacity: 0.35; cursor: not-allowed; }
+#message-input:disabled { cursor: not-allowed; }
 #message-input::placeholder { color: var(--text-dim); }
 
-:root[data-theme="clean"] #message-input,
-:root[data-theme="terracotta"] #message-input,
-:root[data-theme="sage"] #message-input {
+:root[data-theme="clean"] .input-bubble,
+:root[data-theme="terracotta"] .input-bubble,
+:root[data-theme="sage"] .input-bubble {
   border-color: var(--border-hover);
 }
 
@@ -3073,7 +3125,7 @@ body.hide-thinking .thinking-block { display: none !important; }
 }
 
 /* Drop zone highlight on input */
-#message-input.file-drop-hover {
+.input-bubble:has(#message-input.file-drop-hover) {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-glow), var(--shadow-sm), var(--shadow-inset);
   background: var(--bg-glass-hover);
@@ -3117,9 +3169,6 @@ body.hide-thinking .thinking-block { display: none !important; }
   .sidebar-toggle {
     display: flex !important;
   }
-
-  .message.assistant { max-width: 100%; width: 100%; flex-wrap: wrap; }
-  .message.assistant .message-usage { width: 100%; }
 
   .message-content {
     font-size: 15px;
