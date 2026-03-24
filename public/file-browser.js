@@ -103,10 +103,34 @@ export class FileBrowser {
         ${size ? `<span class="file-size">${size}</span>` : ''}
       `;
 
-      // Click: open directory or open file natively
+      // Click: open directory or display file in editor
       el.addEventListener('click', () => {
         if (item.isDirectory) {
           this.load(item.path);
+        } else {
+          // Highlight selected
+          document.querySelectorAll('.file-item.selected').forEach(e => e.classList.remove('selected'));
+          el.classList.add('selected');
+          
+          // Update editor pane
+          const editorFilename = document.getElementById('editor-filename');
+          const editorCode = document.getElementById('editor-code');
+          if (editorFilename && editorCode) {
+            editorFilename.textContent = item.name;
+            editorCode.textContent = 'Loading...';
+            document.getElementById('editor-pane').setAttribute('data-path', item.path);
+            const floatingAddBtn = document.getElementById('floating-add-btn');
+            if (floatingAddBtn) floatingAddBtn.classList.add('hidden'); // reset button
+            // Fetch file content
+            fetch('/api/read?path=' + encodeURIComponent(item.path))
+              .then(res => res.text())
+              .then(text => {
+                editorCode.textContent = text;
+              })
+              .catch(err => {
+                editorCode.textContent = 'Error loading file: ' + err.message;
+              });
+          }
         }
       });
 

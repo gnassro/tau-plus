@@ -15,19 +15,30 @@
 </head>
 <body>
   <div class="app-layout">
-    <!-- Left Sidebar -->
-    <div class="sidebar" id="sidebar">
-      <div class="sidebar-header">
-        <div class="mode-toggle" id="mode-toggle">
-          <span class="mode-link active" title="Chat"><img src="icons/tau-192.png" alt="τ" class="tau-icon"></span>
-        </div>
-        <input type="text" id="session-search-input" class="sidebar-search-input" placeholder="Search..." autocomplete="off" />
-        <div class="sidebar-actions">
-          <button class="icon-btn" id="refresh-sessions-btn" title="Refresh sessions" aria-label="Refresh sessions"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></button>
-        </div>
+    <!-- File Browser (right sidebar) -->
+    <div class="file-sidebar" id="file-sidebar">
+      <div class="file-sidebar-header">
+        <span class="file-sidebar-title" id="file-sidebar-title">Files</span>
+        <button class="icon-btn" id="file-sidebar-up" title="Parent directory">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
+        </button>
+        <button class="icon-btn" id="file-sidebar-finder" title="Open in file manager">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+        <button class="icon-btn" id="file-sidebar-close" title="Close" aria-label="Close file browser"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
-      <div class="session-list" id="session-list">
-        <div class="session-loading">Loading sessions...</div>
+      <div class="file-sidebar-path" id="file-sidebar-path" title=""></div>
+      <div class="file-list" id="file-list"></div>
+    </div>
+
+    <!-- Editor Pane (Center) -->
+    <div class="editor-pane" id="editor-pane">
+      <div class="editor-header" style="display:flex; justify-content:space-between; align-items:center;">
+        <span id="editor-filename">Welcome</span>
+        
+      </div>
+      <div class="editor-content">
+        <pre><code id="editor-code">Select a file to view</code></pre>
       </div>
     </div>
 
@@ -69,6 +80,9 @@
           </div>
           <button class="icon-btn" id="file-sidebar-toggle" title="Files" aria-label="Toggle file browser">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+          </button>
+          <button class="icon-btn" id="history-btn" title="Session History" aria-label="Session History">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
           </button>
           <button class="settings-btn" id="settings-btn" title="Settings" aria-label="Settings">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -138,21 +152,6 @@
       </div>
     </div>
 
-    <!-- File Browser (right sidebar) -->
-    <div class="file-sidebar collapsed" id="file-sidebar">
-      <div class="file-sidebar-header">
-        <span class="file-sidebar-title" id="file-sidebar-title">Files</span>
-        <button class="icon-btn" id="file-sidebar-up" title="Parent directory">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
-        </button>
-        <button class="icon-btn" id="file-sidebar-finder" title="Open in file manager">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></svg>
-        </button>
-        <button class="icon-btn" id="file-sidebar-close" title="Close" aria-label="Close file browser"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-      </div>
-      <div class="file-sidebar-path" id="file-sidebar-path" title=""></div>
-      <div class="file-list" id="file-list"></div>
-    </div>
   </div>
 
   <!-- Settings Overlay -->
@@ -197,6 +196,32 @@
     </div>
   </div>
 
+  </div>
+
+  <!-- History Overlay -->
+  <div class="settings-overlay hidden" id="history-overlay"></div>
+
+  <!-- History Panel -->
+  <div class="settings-panel hidden" id="history-panel">
+    <div class="settings-header">
+      <h3>Session History</h3>
+      <button class="settings-close" id="history-close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="settings-body" style="padding: 0;">
+      <div class="sidebar" id="sidebar" style="width:100%; height:100%; display:flex; flex-direction:column; background:transparent;">
+        <div class="sidebar-header" style="background:transparent; border-bottom:1px solid var(--border);">
+          <input type="text" id="session-search-input" class="sidebar-search-input" placeholder="Search sessions..." autocomplete="off" />
+          <div class="sidebar-actions">
+            <button class="icon-btn" id="refresh-sessions-btn" title="Refresh sessions" aria-label="Refresh sessions"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></button>
+          </div>
+        </div>
+        <div class="session-list" id="session-list" style="flex:1; overflow-y:auto; padding:8px;">
+          <div class="session-loading">Loading sessions...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Command Palette -->
   <div class="command-palette-overlay hidden" id="command-palette-overlay"></div>
   <div class="command-palette hidden" id="command-palette">
@@ -206,6 +231,11 @@
 
   <!-- Dialog Container -->
   <div id="dialog-container" class="hidden"></div>
+
+  <!-- Floating Add Button -->
+  <button id="floating-add-btn" class="hidden" title="Add selection to chat">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg> Add to Chat
+  </button>
 
   <!-- Scripts -->
   <script type="module" src="app.js"></script>

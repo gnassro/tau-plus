@@ -11,6 +11,10 @@ import { SessionSidebar } from './session-sidebar.js';
 import { themes, applyTheme, getCurrentTheme } from './themes.js';
 import { FileBrowser } from './file-browser.js';
 import { Launcher } from './launcher.js';
+import { ChatInput } from './chat-input.js';
+import { Autocomplete } from './autocomplete.js';
+import { CodeEditor } from './code-editor.js';
+
 
 
 // Initialize components
@@ -28,7 +32,15 @@ const sidebar = new SessionSidebar(
 );
 
 // UI elements
-const messageInput = document.getElementById('message-input');
+
+// Instantiate Modules
+const chatInput = new ChatInput('message-input', 'chat-form', sendMessage);
+const autocomplete = new Autocomplete(chatInput);
+const codeEditor = new CodeEditor(chatInput);
+
+chatInput.onImagePaste = (files) => addImageFiles(files);
+const messageInput = chatInput.element;
+
 const chatForm = document.getElementById('chat-form');
 const sendBtn = document.getElementById('send-btn');
 const abortBtn = document.getElementById('abort-btn');
@@ -104,10 +116,10 @@ document.getElementById('file-sidebar-finder').addEventListener('click', () => {
 });
 
 // Restore file sidebar state
-if (localStorage.getItem('tau-file-sidebar') === 'open') {
-  fileSidebar.classList.remove('collapsed');
-  fileBrowser.load();
-}
+// Always load the file sidebar since it's now an IDE pane!
+fileSidebar.classList.remove('collapsed');
+fileBrowser.load();
+
 
 
 // ═══════════════════════════════════════
@@ -443,190 +455,6 @@ function formatToolOutput(result) {
   return JSON.stringify(result, null, 2);
 }
 
-// ═══════════════════════════════════════
-// Input handling — textarea with auto-resize
-// ═══════════════════════════════════════
-
-chatForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  sendMessage();
-});
-
-// ═══════════════════════════════════════
-// @ File Autocomplete
-// ═══════════════════════════════════════
-let projectFilesCache = null;
-let autocompleteActive = false;
-let autocompleteMatchStart = -1;
-let autocompleteSelectedIndex = 0;
-let filteredFiles = [];
-let selectedContextFiles = [];
-
-const autocompleteDropdown = document.createElement('div');
-autocompleteDropdown.id = 'autocomplete-dropdown';
-autocompleteDropdown.className = 'autocomplete-dropdown hidden';
-// Append dropdown to the input-bubble so it's positioned relatively
-document.querySelector('.input-bubble').appendChild(autocompleteDropdown);
-
-async function fetchProjectFiles() {
-  if (projectFilesCache) return projectFilesCache;
-  try {
-    const resp = await fetch('/api/rpc', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'get_project_files' })
-    });
-    const data = await resp.json();
-    if (data.success && data.data && data.data.files) {
-      projectFilesCache = data.data.files;
-      return projectFilesCache;
-    }
-  } catch (err) {
-    console.error('Failed to fetch project files', err);
-  }
-  return [];
-}
-
-function closeAutocomplete() {
-  autocompleteActive = false;
-  autocompleteDropdown.classList.add('hidden');
-  autocompleteDropdown.innerHTML = '';
-}
-
-function updateAutocompleteDropdown() {
-  if (!autocompleteActive || filteredFiles.length === 0) {
-    closeAutocomplete();
-    return;
-  }
-  
-  autocompleteDropdown.innerHTML = '';
-  autocompleteDropdown.classList.remove('hidden');
-  
-  filteredFiles.forEach((file, index) => {
-    const div = document.createElement('div');
-    div.className = 'autocomplete-item' + (index === autocompleteSelectedIndex ? ' active' : '');
-    div.textContent = file;
-    div.onmousedown = (e) => {
-      e.preventDefault(); // keep focus on textarea
-      insertAutocompleteFile(file);
-    };
-    autocompleteDropdown.appendChild(div);
-  });
-
-  // Scroll active item into view
-  const activeItem = autocompleteDropdown.querySelector('.active');
-  if (activeItem) {
-    activeItem.scrollIntoView({ block: 'nearest' });
-  }
-}
-
-function insertAutocompleteFile(file) {
-  const sel = window.getSelection();
-  if (!sel.rangeCount) return;
-  const range = sel.getRangeAt(0);
-  
-  if (range.startContainer.nodeType === Node.TEXT_NODE) {
-    const text = range.startContainer.textContent.substring(0, range.startOffset);
-    const match = text.match(/@([^\s]*)$/);
-    if (match) {
-      // Delete the typed @word
-      range.setStart(range.startContainer, range.startOffset - match[0].length);
-      range.deleteContents();
-      
-      const fileName = file.split('/').pop();
-      const chipHtml = `<span class="context-chip" contenteditable="false" data-path="${file}">${fileName}<button type="button" class="remove-chip" tabindex="-1" onclick="this.parentElement.remove(); document.getElementById('message-input').focus();" aria-label="Remove context"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button></span>&nbsp;`;
-      
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = chipHtml;
-      
-      const frag = document.createDocumentFragment();
-      let node, lastNode;
-      while ((node = tempDiv.firstChild)) {
-        lastNode = frag.appendChild(node);
-      }
-      range.insertNode(frag);
-      
-      if (lastNode) {
-        range.setStartAfter(lastNode);
-        range.collapse(true);
-        sel.removeAllRanges();
-        sel.addRange(range);
-      }
-    }
-  }
-  
-  closeAutocomplete();
-  messageInput.dispatchEvent(new Event('input'));
-}
-
-messageInput.addEventListener('keydown', async (e) => {
-  if (autocompleteActive) {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      autocompleteSelectedIndex = (autocompleteSelectedIndex + 1) % filteredFiles.length;
-      updateAutocompleteDropdown();
-      return;
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      autocompleteSelectedIndex = (autocompleteSelectedIndex - 1 + filteredFiles.length) % filteredFiles.length;
-      updateAutocompleteDropdown();
-      return;
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      insertAutocompleteFile(filteredFiles[autocompleteSelectedIndex]);
-      return;
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      closeAutocomplete();
-      return;
-    }
-  }
-  
-  // Enter sends, Shift+Enter inserts newline
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  } else if (e.key === 'Enter' && e.shiftKey) {
-    e.preventDefault();
-    document.execCommand('insertText', false, '\n');
-  }
-});
-
-// Auto-resize and Autocomplete triggering
-messageInput.addEventListener('input', async () => {
-  messageInput.style.height = 'auto';
-  messageInput.style.height = Math.min(messageInput.scrollHeight, 200) + 'px';
-
-  let currentWord = '';
-  const sel = window.getSelection();
-  if (sel.rangeCount > 0) {
-    const range = sel.getRangeAt(0);
-    if (range.startContainer.nodeType === Node.TEXT_NODE) {
-      const textBeforeCursor = range.startContainer.textContent.substring(0, range.startOffset);
-      const words = textBeforeCursor.split(/[\s\n]+/);
-      currentWord = words[words.length - 1];
-    }
-  }
-
-  if (currentWord.startsWith('@')) {
-    autocompleteMatchStart = -1; // Not used anymore, done via Selection API
-    const query = currentWord.substring(1).toLowerCase();
-    
-    const files = await fetchProjectFiles();
-    
-    filteredFiles = files.filter(f => f.toLowerCase().includes(query)).slice(0, 50);
-    
-    if (filteredFiles.length > 0) {
-      autocompleteActive = true;
-      autocompleteSelectedIndex = 0;
-      updateAutocompleteDropdown();
-    } else {
-      closeAutocomplete();
-    }
-  } else {
-    closeAutocomplete();
-  }
-});
 
 // ═══════════════════════════════════════
 // Image attachment
@@ -758,28 +586,6 @@ function renderImagePreviews() {
 // ═══════════════════════════════════════
 
 let messageQueue = [];
-
-function getEditorText() {
-  const clone = messageInput.cloneNode(true);
-  const chips = clone.querySelectorAll('.context-chip');
-  chips.forEach(chip => {
-    const path = chip.getAttribute('data-path');
-    const textNode = document.createTextNode('@' + path + ' ');
-    chip.parentNode.replaceChild(textNode, chip);
-  });
-  
-  // Replace <br> and <div> with newlines
-  const divs = clone.querySelectorAll('div, p');
-  divs.forEach(d => {
-    d.parentNode.insertBefore(document.createTextNode('\n'), d);
-  });
-  const brs = clone.querySelectorAll('br');
-  brs.forEach(br => {
-    br.parentNode.replaceChild(document.createTextNode('\n'), br);
-  });
-  
-  return clone.textContent.trim();
-}
 
 function sendMessage() {
   let message = getEditorText();
@@ -1116,6 +922,10 @@ document.addEventListener('keydown', (e) => {
       closeSettings();
       return;
     }
+    if (historyPanel && !historyPanel.classList.contains('hidden')) {
+      closeHistory();
+      return;
+    }
     if (!commandPalette.classList.contains('hidden')) {
       closeCommandPalette();
       return;
@@ -1137,7 +947,7 @@ document.addEventListener('keydown', (e) => {
   // / — Focus message input (when not already in an input)
   if (e.key === '/' && !isInInput()) {
     e.preventDefault();
-    messageInput.focus();
+    chatInput.element.focus();
   }
 });
 
@@ -1241,7 +1051,7 @@ async function newSession() {
     sidebarEl.classList.add('collapsed');
     sidebarOverlay.classList.remove('visible');
   }
-  if (!isMobile()) messageInput.focus();
+  if (!isMobile()) chatInput.element.focus();
 }
 
 async function handleSessionSelect(session, project) {
@@ -1265,75 +1075,59 @@ async function switchSession(sessionFile, session = null, project = null) {
     messageRenderer.clear();
     toolCardRenderer.clear();
 
-    if (sessionFile && session) {
-      messageRenderer.renderSystemMessage('Loading session...');
-
-      const dirName = project?.dirName;
-      const file = session.file;
-      console.log('[App] Loading history:', { dirName, file, sessionFile });
-
-      if (dirName && file) {
-        try {
-          const res = await fetch(`/api/sessions/${dirName}/${file}`);
-          console.log('[App] History fetch status:', res.status);
-          const data = await res.json();
-          console.log('[App] History entries:', data.entries?.length || 0);
-
-          messageRenderer.clear();
-          renderSessionHistory(data.entries || []);
-        } catch (e) {
-          console.error('[App] History fetch error:', e);
-        }
-      } else {
-        console.log('[App] Skipped history load: dirName or file missing');
-      }
-    } else {
+    if (!sessionFile) {
       messageRenderer.renderWelcome();
+      return;
     }
 
-    // In mirror mode, check if this session is live on any instance
-    if (isMirrorMode) {
-      // Check if this session is live on a different instance
-      const otherInstance = liveInstances.find(i => i.sessionFile === sessionFile && i.port !== new URL(wsClient.url).port * 1);
-      if (otherInstance) {
-        // Reconnect to the other instance
-        const newUrl = `ws://${location.hostname}:${otherInstance.port}/ws`;
-        console.log(`[App] Switching to instance on port ${otherInstance.port}`);
-        wsClient.disconnect();
-        wsClient.url = newUrl;
-        wsClient.forceReconnect();
-        mirrorActiveSessionFile = sessionFile;
-        viewingActiveSession = true;
-        updateMirrorInputState();
+    messageRenderer.renderSystemMessage('Checking session instances...');
+
+    // Fetch fresh instances list
+    const res = await fetch('/api/instances');
+    const data = await res.json();
+    const liveInstances = data.instances || [];
+
+    const otherInstance = liveInstances.find(i => i.sessionFile === sessionFile);
+    if (otherInstance) {
+      if (otherInstance.port === parseInt(location.port || '80', 10) || (location.port === '' && otherInstance.port === 3001)) {
+        // It's the current one
+        wsClient.send({ type: 'mirror_sync_request' });
         return;
       }
-
-      // Check if this is the active session on the current instance
-      viewingActiveSession = sessionFile === mirrorActiveSessionFile;
-      updateMirrorInputState();
-
-      if (viewingActiveSession) {
-        // Re-request live state from the extension
-        wsClient.send({ type: 'mirror_sync_request' });
-      }
-    } else {
-      const res = await fetch('/api/sessions/switch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionFile }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        messageRenderer.renderError(`Failed to switch session: ${err.error}`);
-      }
+      
+      messageRenderer.renderSystemMessage('Redirecting to active session instance...');
+      window.location.href = `http://${location.hostname}:${otherInstance.port}`;
+      return;
     }
+
+    // It's not running anywhere. Ask server to spawn it.
+    messageRenderer.renderSystemMessage('Spawning Pi terminal for this session (waiting for iTerm2)...');
+    
+    const switchRes = await fetch('/api/sessions/switch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionFile })
+    });
+    
+    if (!switchRes.ok) {
+      const err = await switchRes.json();
+      messageRenderer.renderError(`Failed to switch session: ${err.error || 'Unknown error'}`);
+      return;
+    }
+
+    const switchData = await switchRes.json();
+    if (switchData.ok && switchData.port) {
+      messageRenderer.renderSystemMessage('Connecting to new session...');
+      window.location.href = `http://${location.hostname}:${switchData.port}`;
+    } else {
+      messageRenderer.renderError('Server responded ok, but no port provided.');
+    }
+
   } catch (error) {
     console.error('[App] Failed to switch session:', error);
-    messageRenderer.renderError('Failed to switch session');
+    messageRenderer.renderError('Failed to switch session: ' + error.message);
   }
 }
-
 // ═══════════════════════════════════════
 // Mirror mode sync
 // ═══════════════════════════════════════
@@ -1361,6 +1155,11 @@ function handleMirrorSync(data) {
   if (data.thinkingLevel) {
     currentThinkingLevel = data.thinkingLevel;
     updateThinkingBtn();
+  }
+
+  // Update session sidebar CWD
+  if (data.cwd && sidebar && sidebar.setCwd) {
+    sidebar.setCwd(data.cwd);
   }
 
   // Clear and render message history
@@ -1663,6 +1462,28 @@ const settingsBtn = document.getElementById('settings-btn');
 const settingsPanel = document.getElementById('settings-panel');
 const settingsOverlay = document.getElementById('settings-overlay');
 const settingsClose = document.getElementById('settings-close');
+
+// History
+const historyBtn = document.getElementById('history-btn');
+const historyOverlay = document.getElementById('history-overlay');
+const historyPanel = document.getElementById('history-panel');
+const historyClose = document.getElementById('history-close');
+
+function openHistory() {
+  historyOverlay.classList.remove('hidden');
+  historyPanel.classList.remove('hidden');
+  sidebar.loadSessions();
+}
+
+function closeHistory() {
+  historyOverlay.classList.add('hidden');
+  historyPanel.classList.add('hidden');
+}
+
+historyBtn?.addEventListener('click', openHistory);
+historyClose?.addEventListener('click', closeHistory);
+historyOverlay?.addEventListener('click', closeHistory);
+
 const themeGrid = document.getElementById('theme-grid');
 
 
@@ -1910,7 +1731,7 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       }
     }
     // Show live transcription in the input
-    messageInput.innerText = finalTranscript + interimTranscript;
+    chatInput.element.innerText = finalTranscript + interimTranscript;
     messageInput.dispatchEvent(new Event('input'));
   });
 
@@ -1941,7 +1762,7 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     micBtn.classList.add('recording');
     micBtn.title = 'Stop recording';
     recognition.start();
-    messageInput.focus();
+    chatInput.element.focus();
   }
 
   function stopRecording() {
@@ -1950,9 +1771,9 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     micBtn.title = 'Voice input';
     try { recognition.stop(); } catch {}
     // Commit final transcript
-    messageInput.innerText = finalTranscript;
+    chatInput.element.innerText = finalTranscript;
     messageInput.dispatchEvent(new Event('input'));
-    messageInput.focus();
+    chatInput.element.focus();
   }
 } else {
   // No speech recognition support — hide mic button
@@ -2085,3 +1906,4 @@ if (splash) {
 }
 
 console.log('🚀 Tau initialized');
+

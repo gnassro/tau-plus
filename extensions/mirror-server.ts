@@ -476,6 +476,7 @@ export default function (pi: ExtensionAPI) {
       sessionFile,
       isStreaming: !ctx.isIdle(),
       contextUsage,
+      cwd: process.cwd(),
     };
   }
 
@@ -988,6 +989,29 @@ img{border-radius:12px}a{color:#b87a5c;font-size:18px;margin-top:16px}p{color:rg
       return;
     }
 
+    // File browser: read file content
+    if (urlPath.startsWith("/api/read") && req.method === "GET") {
+      try {
+        const readUrl = new URL(`http://localhost${req.url}`);
+        const fp = readUrl.searchParams.get("path");
+        if (!fp || !fs.existsSync(fp) || fs.statSync(fp).isDirectory()) {
+          res.writeHead(400); res.end("Invalid file"); return;
+        }
+        // Limit to 100KB to avoid crashing browser
+        const stat = fs.statSync(fp);
+        if (stat.size > 100 * 1024) {
+          res.writeHead(200, { "Content-Type": "text/plain" });
+          res.end("File too large to display (" + Math.round(stat.size/1024) + "KB)");
+          return;
+        }
+        res.writeHead(200, { "Content-Type": "text/plain" });
+        fs.createReadStream(fp).pipe(res);
+      } catch (err: any) {
+        res.writeHead(500); res.end(err.message);
+      }
+      return;
+    }
+
     // File browser: open file natively
     if (urlPath === "/api/open" && req.method === "POST") {
       let body = "";
@@ -1047,10 +1071,45 @@ img{border-radius:12px}a{color:#b87a5c;font-size:18px;margin-top:16px}p{color:rg
       return;
     }
 
-    // Session switch — in mirror mode, this is a no-op (session is controlled by TUI)
+    // Session switch — spawns a new terminal window and exits current
     if (urlPath === "/api/sessions/switch" && req.method === "POST") {
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ success: true, mirror: true, note: "Session switching is controlled by the TUI in mirror mode" }));
+      let body = "";
+      req.on("data", (chunk: Buffer) => { body += chunk.toString(); });
+      req.on("end", () => {
+        try {
+          const { sessionFile } = JSON.parse(body);
+          if (!sessionFile) {
+            res.writeHead(400); res.end(JSON.stringify({ error: "sessionFile required" }));
+            return;
+          }
+          const { execSync } = require("node:child_process");
+          const cwdEscaped = process.cwd().replace(/'/g, "'\\''");
+          const sessionEscaped = sessionFile.replace(/'/g, "'\\''");
+          
+          // Spawn a new iTerm2 window
+          execSync(`osascript -e 'tell app "iTerm2" to create window with default profile command "cd '"'"'${cwdEscaped}'"'"' && pi --resume '"'"'${sessionEscaped}'"'"'"'`);
+          
+          // Wait until the new instance registers, max 10 seconds
+          let attempts = 0;
+          const checkInterval = setInterval(() => {
+            attempts++;
+            const instances = getRunningInstances();
+            const inst = instances.find(i => i.sessionFile === sessionFile && i.pid !== process.pid);
+            if (inst) {
+              clearInterval(checkInterval);
+              res.writeHead(200, { "Content-Type": "application/json" });
+              res.end(JSON.stringify({ ok: true, port: inst.port }));
+              setTimeout(() => process.exit(0), 1000);
+            } else if (attempts >= 20) {
+              clearInterval(checkInterval);
+              res.writeHead(500, { "Content-Type": "application/json" });
+              res.end(JSON.stringify({ error: "Timeout waiting for new instance to register" }));
+            }
+          }, 500);
+        } catch (e: any) {
+          res.writeHead(500); res.end(JSON.stringify({ error: e.message }));
+        }
+      });
       return;
     }
 
