@@ -99,14 +99,8 @@ export class SessionSidebar {
     const existing = this.container.querySelector('.search-results-group');
     if (existing) existing.remove();
     
-    // Filter results to only current cwd
-    const filteredResults = this.currentCwd ? this._searchResults.filter(r => {
-      // Find the project matching this result's filePath
-      const project = this.projects.find(p => p.sessions.some(s => s.filePath === r.filePath));
-      if (!project) return false;
-      const trueCwd = project.sessions[0]?.cwd || project.path;
-      return trueCwd.replace(/\/+$/, '') === this.currentCwd.replace(/\/+$/, '');
-    }) : this._searchResults;
+    // Backend already filters by current project, so use all results
+    const filteredResults = this._searchResults;
     
     if (filteredResults.length === 0) return;
 
@@ -370,12 +364,6 @@ export class SessionSidebar {
     // Favourites section — collect from all projects
     const favSessions = [];
     for (const project of this.projects) {
-      const trueCwd = project.sessions[0]?.cwd || project.path;
-      if (this.currentCwd) {
-        const p1 = trueCwd.replace(/\/+$/, '');
-        const p2 = this.currentCwd.replace(/\/+$/, '');
-        if (p1 !== p2) continue;
-      }
       for (const session of project.sessions) {
         if (this.isFavourite(session.filePath)) {
           favSessions.push({ session, project });
@@ -403,13 +391,6 @@ export class SessionSidebar {
 
     // Regular project groups
     for (const project of this.projects) {
-      const trueCwd = project.sessions[0]?.cwd || project.path;
-      if (this.currentCwd) {
-        const p1 = trueCwd.replace(/\/+$/, '');
-        const p2 = this.currentCwd.replace(/\/+$/, '');
-        if (p1 !== p2) continue;
-      }
-
       const group = document.createElement('div');
       group.className = 'project-group';
       const isCollapsed = this.collapsedProjects.has(project.dirName);
