@@ -41,25 +41,43 @@ export class ChatInput {
 
     // Paste intercept
     this.element.addEventListener('paste', (e) => {
-      const files = [];
-      let isImage = false;
+      // Always block the browser's default paste — handles both text double-paste
+      // and image-leaking-into-contenteditable issues
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Collect image files from clipboard
+      const imageFiles = [];
       for (const item of e.clipboardData.items) {
         if (item.type.startsWith('image/')) {
-          files.push(item.getAsFile());
-          isImage = true;
+          const file = item.getAsFile();
+          if (file) imageFiles.push(file);
         }
       }
-      
-      if (this.onImagePaste && files.length) {
-        this.onImagePaste(files);
+
+      if (imageFiles.length > 0) {
+        // Images go to the preview area only — never into the text field
+        if (this.onImagePaste) {
+          this.onImagePaste(imageFiles);
+        }
+        // Return immediately: do NOT insert anything into the contenteditable
+        return;
       }
-      
-      // Intercept text paste to insert plain text only
-      if (!isImage && e.clipboardData.getData('text/plain')) {
-        e.preventDefault();
-        document.execCommand('insertText', false, e.clipboardData.getData('text/plain'));
+
+      // Plain text only — strip all HTML formatting
+      const text = e.clipboardData.getData('text/plain');
+      if (text) {
+        document.execCommand('insertText', false, text);
       }
     });
+
+    // Bulletproof guard: MutationObserver strips any <img> or <video> that
+    // somehow leaks into the contenteditable (e.g. browser quirks on macOS Safari)
+    const mediaGuard = new MutationObserver(() => {
+      const leaked = this.element.querySelectorAll('img, video, picture');
+      leaked.forEach(el => el.remove());
+    });
+    mediaGuard.observe(this.element, { childList: true, subtree: true });
     
     // Auto-resize
     this.element.addEventListener('input', () => {

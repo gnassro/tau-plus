@@ -555,24 +555,6 @@ messageInput.addEventListener('drop', (e) => {
   addImageFiles(e.dataTransfer.files);
 });
 
-// Paste images
-messageInput.addEventListener('paste', (e) => {
-  const files = [];
-  let isImage = false;
-  for (const item of e.clipboardData.items) {
-    if (item.type.startsWith('image/')) {
-      files.push(item.getAsFile());
-      isImage = true;
-    }
-  }
-  if (files.length) addImageFiles(files);
-  
-  // Intercept text paste to insert plain text only
-  if (!isImage && e.clipboardData.getData('text/plain')) {
-    e.preventDefault();
-    document.execCommand('insertText', false, e.clipboardData.getData('text/plain'));
-  }
-});
 
 function renderImagePreviews() {
   imagePreviews.innerHTML = '';
@@ -1076,6 +1058,9 @@ async function handleSessionSelect(session, project) {
   updateTokenUsage();
   await switchSession(session.filePath, session, project);
 
+  // Always close the history panel after selecting
+  closeHistory();
+
   // Close sidebar on mobile after selecting
   if (isMobile()) {
     sidebarEl.classList.add('collapsed');
@@ -1360,7 +1345,7 @@ function updateCostDisplay() {
 function updateTokenUsage() {
   if (lastInputTokens > 0 && contextWindowSize > 0) {
     const pct = Math.round((lastInputTokens / contextWindowSize) * 100);
-    tokenUsageEl.textContent = `${pct}%`;
+    tokenUsageEl.innerHTML = `<span>${pct}% context used</span>`;
     tokenUsageEl.classList.add('visible');
     tokenUsageEl.classList.remove('warning', 'critical');
     if (pct >= 80) {
@@ -1375,8 +1360,7 @@ function updateTokenUsage() {
       hideCompactButton();
     }
   } else if (lastInputTokens > 0) {
-    // No context window info yet, just show raw tokens
-    tokenUsageEl.textContent = `${(lastInputTokens / 1000).toFixed(1)}k`;
+    tokenUsageEl.innerHTML = `<span>${(lastInputTokens / 1000).toFixed(1)}k tokens</span>`;
     tokenUsageEl.classList.add('visible');
     tokenUsageEl.classList.remove('warning', 'critical');
   }
@@ -1474,6 +1458,12 @@ const settingsBtn = document.getElementById('settings-btn');
 const settingsPanel = document.getElementById('settings-panel');
 const settingsOverlay = document.getElementById('settings-overlay');
 const settingsClose = document.getElementById('settings-close');
+
+// New Chat
+const newChatBtn = document.getElementById('new-chat-btn');
+newChatBtn?.addEventListener('click', () => {
+  wsClient.send({ type: 'new_session' });
+});
 
 // History
 const historyBtn = document.getElementById('history-btn');
@@ -1798,27 +1788,9 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
 // Initialize
 // ═══════════════════════════════════════
 
-// On mobile, move cost + token usage above input
+// On mobile, collapse sidebar by default
 if (isMobile()) {
   sidebarEl.classList.add('collapsed');
-
-  const mobileBar = document.getElementById('mobile-model-bar');
-  const sessionCost = document.getElementById('session-cost');
-  const tokenUsage = document.getElementById('token-usage');
-  if (mobileBar && sessionCost && tokenUsage) {
-    mobileBar.appendChild(sessionCost);
-    mobileBar.appendChild(tokenUsage);
-  }
-
-  // Start collapsed
-  mobileBar.classList.add('collapsed');
-
-  // Toggle via chevron
-  const contextToggle = document.getElementById('mobile-context-toggle');
-  contextToggle.addEventListener('click', () => {
-    mobileBar.classList.toggle('collapsed');
-    contextToggle.classList.toggle('flipped', !mobileBar.classList.contains('collapsed'));
-  });
 }
 
 // Launcher

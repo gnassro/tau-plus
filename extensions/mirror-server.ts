@@ -215,15 +215,19 @@ export default function (pi: ExtensionAPI) {
 
   // Store latest context reference for use in command handlers
   let latestCtx: ExtensionContext | null = null;
-  // Captured from command handlers — stable reference to AgentSession.switchSession()
+  // Captured from command handlers — stable reference to AgentSession methods
   let switchSessionFn: ((sessionPath: string) => Promise<{ cancelled: boolean }>) | null = null;
+  let newSessionFn: ((options?: { parentSession?: string }) => Promise<boolean>) | null = null;
 
-  // Monkey-patch ExtensionRunner to capture switchSession early
+  // Monkey-patch ExtensionRunner to capture session methods early
   // This avoids requiring the user to type a command in the terminal first.
   const originalBind = ExtensionRunner.prototype.bindCommandContext;
   ExtensionRunner.prototype.bindCommandContext = function (actions) {
     if (actions && typeof actions.switchSession === "function") {
-      switchSessionFn = actions.switchSession.bind(actions); // Wait, bind to actions?
+      switchSessionFn = actions.switchSession.bind(actions);
+    }
+    if (actions && typeof actions.newSession === "function") {
+      newSessionFn = actions.newSession.bind(actions);
     }
     return originalBind.apply(this, arguments as any);
   };
@@ -629,6 +633,22 @@ export default function (pi: ExtensionAPI) {
             sendTo(ws, success("switch_session", { cancelled: result.cancelled }));
           } catch (e: any) {
             sendTo(ws, error("switch_session", e.message || "Switch failed"));
+          }
+          break;
+        }
+
+        // ─── New Session ───
+        case "new_session": {
+          if (!newSessionFn) {
+            sendTo(ws, error("new_session", "New session not ready (InteractiveMode hasn't bound context yet)."));
+            break;
+          }
+          try {
+            const cancelled = await newSessionFn();
+            // session_switch event will fire and broadcast fresh state
+            sendTo(ws, success("new_session", { cancelled }));
+          } catch (e: any) {
+            sendTo(ws, error("new_session", e.message || "New session failed"));
           }
           break;
         }
