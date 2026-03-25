@@ -51,6 +51,7 @@
       <div class="header">
         <div class="header-left">
           <button class="sidebar-toggle" id="sidebar-toggle" title="Toggle sidebar" aria-label="Toggle sidebar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+          <div class="header-divider"></div>
           <div class="model-dropdown" id="model-dropdown">
             <button class="model-dropdown-btn" id="model-dropdown-btn" title="Switch model">
               <span class="model-dropdown-label" id="model-dropdown-label">model</span>
@@ -60,26 +61,18 @@
           </div>
           <button class="thinking-tag" id="thinking-btn" title="Cycle thinking level">off</button>
         </div>
+
+        <div class="header-center">
+          <span class="status-indicator" id="status-indicator"></span>
+          <span class="status-text" id="status-text">Connecting...</span>
+        </div>
+
         <div class="header-right">
-          <div class="pill session-cost" id="session-cost" title="Session cost"></div>
-          <div style="position: relative;">
-            <div class="pill token-usage" id="token-usage" title="Click for context breakdown"></div>
-            <div class="context-viz hidden" id="context-viz">
-              <div class="context-viz-title">Context Window</div>
-              <div class="context-bar" id="context-bar"></div>
-              <div class="context-legend" id="context-legend"></div>
-              <div class="context-viz-footer">
-                <span id="context-viz-used"></span>
-                <span id="context-viz-total"></span>
-              </div>
-            </div>
-          </div>
-          <div class="status">
-            <span class="status-indicator" id="status-indicator"></span>
-            <span class="status-text" id="status-text">Connecting...</span>
-          </div>
           <button class="icon-btn" id="file-sidebar-toggle" title="Files" aria-label="Toggle file browser">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+          </button>
+          <button class="icon-btn" id="new-chat-btn" title="New Chat" aria-label="New Chat">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
           </button>
           <button class="icon-btn" id="history-btn" title="Session History" aria-label="Session History">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
@@ -124,10 +117,6 @@
 
       <!-- Input Area -->
       <div class="input-area">
-        <button class="mobile-context-toggle" id="mobile-context-toggle">
-          <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 5L5 1L9 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-        <div class="mobile-model-bar" id="mobile-model-bar"></div>
         <div class="queued-messages hidden" id="queued-messages"></div>
         <div class="image-previews hidden" id="image-previews"></div>
         
@@ -156,6 +145,24 @@
             <button type="button" id="abort-btn" class="hidden" title="Abort (Esc)" tabindex="-1"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg></button>
           </div>
         </form>
+
+        <!-- Context usage footer — sits below the input bubble -->
+        <div class="input-footer">
+          <div class="pill session-cost" id="session-cost" title="Session cost"></div>
+          <div class="input-footer-ctx" id="input-footer-ctx">
+            <button class="ctx-usage-btn" id="token-usage" title="Click for context breakdown"></button>
+            <div class="context-viz hidden" id="context-viz">
+              <div class="context-viz-title">Context Window</div>
+              <div class="context-bar" id="context-bar"></div>
+              <div class="context-legend" id="context-legend"></div>
+              <div class="context-viz-footer">
+                <span id="context-viz-used"></span>
+                <span id="context-viz-total"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 

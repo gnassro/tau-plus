@@ -329,7 +329,7 @@ export class SessionSidebar {
     }
 
     const title = session.name || session.firstMessage || 'Empty session';
-    const time = this.formatTime(session.timestamp);
+    const time = this.formatTime(session.mtime || session.timestamp);
     const tmuxTag = session.tmux ? '<span class="session-tag tmux-tag">tmux</span>' : '';
     const favIcon = this.isFavourite(session.filePath) ? '<span class="session-fav-icon">★</span>' : '';
 
@@ -422,7 +422,8 @@ export class SessionSidebar {
       const sessionsDiv = document.createElement('div');
       sessionsDiv.className = `project-sessions${isCollapsed ? ' collapsed' : ''}`;
 
-      for (const session of project.sessions) {
+      const sorted = [...project.sessions].sort((a, b) => (b.mtime || 0) - (a.mtime || 0));
+      for (const session of sorted) {
         sessionsDiv.appendChild(this.buildSessionItem(session, project));
       }
 
