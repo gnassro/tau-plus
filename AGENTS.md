@@ -1,4 +1,6 @@
-# Tau Mirror Project - AI Agent Guidelines
+# Tau-plus Mirror Project - AI Agent Guidelines
+
+*Note: This project is a fork of the original [tau](https://github.com/deflating/tau) project.*
 
 Welcome, future AI Agent! This project is the web UI ("Mirror") for the Pi Coding Agent. It allows users to view and interact with their terminal-based Pi sessions from a browser.
 
@@ -32,7 +34,7 @@ We moved away from a monolithic `app.js` toward modular, object-oriented ES6 cla
 ## Development Rules
 
 1. **Inline Context Chips**: The chat input is NOT a `<textarea>`. It is a `<div contenteditable="true">`. File mentions and code snippets are rendered as HTML `<span class="context-chip">` elements inline with the text. If you need to read the text, use `chatInput.getText()` which safely parses the HTML chips back into `@file/path` or markdown blocks. Do NOT use `.value` or `.innerText` blindly.
-2. **Session Switching**: Session switching is done **in-process** via Pi's native `AgentSession.switchSession()`. When the user clicks a session in the sidebar, the frontend sends a `switch_session` WebSocket command. The backend calls `switchSessionFn` (captured from `ExtensionCommandContext`), which triggers Pi's `session_switch` event. The event handler broadcasts a fresh `mirror_sync` snapshot to all browser clients — no page reload, no redirect, no new terminal window. The `/tauresume` command is also available from the Pi TUI for manual switching.
+2. **Session Switching**: Session switching is done **in-process** via Pi's native `AgentSession.switchSession()`. When the user clicks a session in the sidebar, the frontend sends a `switch_session` WebSocket command. The backend calls `switchSessionFn` (captured from `ExtensionCommandContext`), which triggers Pi's `session_switch` event. The event handler broadcasts a fresh `mirror_sync` snapshot to all browser clients — no page reload, no redirect, no new terminal window. The `/tau-plus-resume` command is also available from the Pi TUI for manual switching.
 3. **Session Listing**: The backend uses `SessionManager.list(process.cwd())` from `@mariozechner/pi-coding-agent` to list only sessions belonging to the current project directory. No client-side cwd filtering is needed.
 4. **Styling**: Always use the defined CSS variables in `public/style.css` (e.g., `var(--bg-solid)`, `var(--text-primary)`, `var(--border)`). Flexbox heavily dictates the 3-pane layout, so be careful not to trigger `flex-shrink` collapse on `.main`.
 5. **Chat Messages & Typing Indicator**: The chat interface avoids restricted container widths for AI responses. Assistant messages use a `.message-actions-row` above the text, allowing `.message-content` to span the full 100% width. The dynamic typing indicator (showing "Thinking..." or "Working (bash)") is appended directly into the `#messages` container so it flows naturally in the chat log, rather than floating awkwardly outside of it.

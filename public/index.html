@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tau</title>
+  <title>Tau-plus</title>
   <link rel="icon" type="image/png" href="icons/tau-192.png">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Tau">
+  <meta name="apple-mobile-web-app-title" content="Tau-plus">
   <meta name="theme-color" content="#f5f3ef">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -33,12 +33,15 @@
 
     <!-- Editor Pane (Center) -->
     <div class="editor-pane" id="editor-pane">
-      <div class="editor-header" style="display:flex; justify-content:space-between; align-items:center;">
-        <span id="editor-filename">Welcome</span>
-        
+      <div class="editor-tabs" id="editor-tabs">
+        <!-- Tabs will be inserted here -->
       </div>
-      <div class="editor-content">
-        <pre><code id="editor-code">Select a file to view</code></pre>
+      <div class="editor-content" style="padding:0; position:relative;">
+        <textarea id="editor-code" spellcheck="false" placeholder="Select a file to view" disabled></textarea>
+        <!-- Floating Add Button -->
+        <button id="floating-add-btn" class="hidden" title="Add selection to chat">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg> Add to Chat
+        </button>
       </div>
     </div>
 
@@ -89,8 +92,8 @@
       <!-- Messages Container -->
       <div class="messages" id="messages">
         <div class="welcome">
-          <div class="welcome-icon"><img src="icons/tau-192.png" alt="τ" class="tau-icon-welcome"></div>
-          <p>Welcome to Tau</p>
+          <div class="welcome-icon"><img src="icons/tau-192.png" alt="τ" class="tau-plus-icon-welcome"></div>
+          <p>Welcome to Tau-plus</p>
           <p class="hint">Type a message below to start chatting with Pi, or select a session from the sidebar.</p>
           <div class="shortcuts-hint">
             <span>/ Focus input</span>
@@ -245,11 +248,6 @@
 
   <!-- Dialog Container -->
   <div id="dialog-container" class="hidden"></div>
-
-  <!-- Floating Add Button -->
-  <button id="floating-add-btn" class="hidden" title="Add selection to chat">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg> Add to Chat
-  </button>
 
   <!-- Scripts -->
   <script type="module" src="app.js"></script>

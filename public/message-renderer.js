@@ -29,8 +29,8 @@ export class MessageRenderer {
     const typingIndicator = document.getElementById('typing-indicator');
     this.container.innerHTML = `
       <div class="welcome">
-        <div class="welcome-icon"><img src="icons/tau-192.png" alt="τ" class="tau-icon-welcome"></div>
-        <p>Welcome to Tau</p>
+        <div class="welcome-icon"><img src="icons/tau-192.png" alt="τ" class="tau-plus-icon-welcome"></div>
+        <p>Welcome to Tau-plus</p>
         <p class="hint">Type a message below to start chatting with Pi, or select a session from the sidebar.</p>
         <div class="shortcuts-hint">
           <span>/ Focus input</span>

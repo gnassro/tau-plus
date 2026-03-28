@@ -76,7 +76,7 @@ let lastUsage = null; // Full usage object for context visualiser
 let mirrorActiveSessionFile = null; // The live session file path from the TUI
 let viewingActiveSession = true; // Whether we're viewing the live session or a historical one
 let isMirrorMode = false; // Set when mirror_sync received
-let liveInstances = []; // All running Tau instances [{port, sessionFile, cwd}]
+let liveInstances = []; // All running Tau-plus instances [{port, sessionFile, cwd}]
 
 // File browser
 const fileSidebar = document.getElementById('file-sidebar');
@@ -92,12 +92,12 @@ fileSidebarToggle.addEventListener('click', () => {
   if (!isCollapsed && !fileBrowser.currentPath) {
     fileBrowser.load(); // Load session cwd
   }
-  localStorage.setItem('tau-file-sidebar', isCollapsed ? 'closed' : 'open');
+  localStorage.setItem('tau-plus-file-sidebar', isCollapsed ? 'closed' : 'open');
 });
 
 fileSidebarClose.addEventListener('click', () => {
   fileSidebar.classList.add('collapsed');
-  localStorage.setItem('tau-file-sidebar', 'closed');
+  localStorage.setItem('tau-plus-file-sidebar', 'closed');
 });
 
 fileSidebarUp.addEventListener('click', () => {
@@ -535,7 +535,7 @@ async function addImageFiles(files) {
       const img = await processImageFile(file);
       pendingImages.push(img);
     } catch (e) {
-      console.error('[Tau] Image processing failed:', e);
+      console.error('[Tau-plus] Image processing failed:', e);
     }
   }
   renderImagePreviews();
@@ -597,7 +597,7 @@ function sendMessage(text) {
 
   if (pendingImages.length > 0) {
     cmd.images = pendingImages.map(img => {
-      console.log(`[Tau] Sending image: mimeType=${img.mimeType}, dataLen=${img.data?.length}`);
+      console.log(`[Tau-plus] Sending image: mimeType=${img.mimeType}, dataLen=${img.data?.length}`);
       return {
         type: 'image',
         data: img.data,
@@ -1583,7 +1583,7 @@ btnThinkingLevel.addEventListener('click', async () => {
 });
 
 // Show thinking toggle (local pref)
-const showThinking = localStorage.getItem('tau-show-thinking') !== 'false';
+const showThinking = localStorage.getItem('tau-plus-show-thinking') !== 'false';
 toggleShowThinking.className = `settings-toggle${showThinking ? ' on' : ''}`;
 if (!showThinking) document.body.classList.add('hide-thinking');
 
@@ -1591,7 +1591,7 @@ toggleShowThinking.addEventListener('click', () => {
   const isOn = toggleShowThinking.classList.contains('on');
   toggleShowThinking.className = `settings-toggle${isOn ? '' : ' on'}`;
   document.body.classList.toggle('hide-thinking', isOn);
-  localStorage.setItem('tau-show-thinking', !isOn);
+  localStorage.setItem('tau-plus-show-thinking', !isOn);
 });
 
 // Auth toggle
@@ -1863,7 +1863,7 @@ function hideLauncher() {
   document.querySelector('.mode-link:first-child')?.classList.add('active');
 }
 
-// Make the tau icon in sidebar switch back to chat
+// Make the tau-plus icon in sidebar switch back to chat
 document.querySelector('.mode-link:first-child')?.addEventListener('click', () => {
   hideLauncher();
 });
@@ -1889,5 +1889,5 @@ if (splash) {
   });
 }
 
-console.log('🚀 Tau initialized');
+console.log('🚀 Tau-plus initialized');
 
