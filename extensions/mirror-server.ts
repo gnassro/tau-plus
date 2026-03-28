@@ -6,7 +6,7 @@
  * 
  * - Forwards all Pi events to connected browser clients
  * - Accepts commands from the browser and executes them via the extension API
- * - Serves static files for the Tau web UI
+ * - Serves static files for the Tau-plus web UI
  * - Sends full state snapshot on client connect (messages, model, etc.)
  */
 
@@ -18,12 +18,12 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import QRCode from "qrcode";
 
-// Load tau settings from ~/.pi/agent/settings.json (falls back to env vars)
+// Load tau-plus settings from ~/.pi/agent/settings.json (falls back to env vars)
 function loadTauSettings(): { port: number; autoStart: boolean; user: string; pass: string; authEnabled?: boolean; projectsDir?: string } {
   let settings: any = {};
   try {
     const settingsPath = path.join(process.env.HOME || "~", ".pi/agent/settings.json");
-    settings = JSON.parse(fs.readFileSync(settingsPath, "utf8")).tau || {};
+    settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"))["tau-plus"] || {};
   } catch {}
   return {
     port: parseInt(process.env.TAU_MIRROR_PORT || settings.port || "3001"),
@@ -65,13 +65,13 @@ function findPublicDir(): string {
     // 2) Installed package path (for npm-installed extension execution)
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const pkgPath = require.resolve("tau-mirror/package.json");
+      const pkgPath = require.resolve("tau-plus-mirror/package.json");
       addCandidate(path.join(path.dirname(pkgPath), "public"));
     } catch {}
 
     // 3) Development fallback from current working directory
     addCandidate(path.resolve(process.cwd(), "public"));
-    addCandidate(path.resolve(process.cwd(), "node_modules/tau-mirror/public"));
+    addCandidate(path.resolve(process.cwd(), "node_modules/tau-plus-mirror/public"));
 
     for (const candidate of candidates) {
       if (fs.existsSync(path.join(candidate, "index.html"))) return candidate;
@@ -81,9 +81,9 @@ function findPublicDir(): string {
     return path.resolve(process.cwd(), "public");
 }
 const SESSIONS_DIR = path.join(process.env.HOME || "~", ".pi/agent/sessions");
-const INSTANCES_DIR = path.join(process.env.HOME || "~", ".pi/tau-instances");
+const INSTANCES_DIR = path.join(process.env.HOME || "~", ".pi/tau-plus-instances");
 
-// Instance registry — tracks all running Tau servers
+// Instance registry — tracks all running Tau-plus servers
 function registerInstance(port: number, sessionFile: string, cwd: string) {
   fs.mkdirSync(INSTANCES_DIR, { recursive: true });
   const info = { port, pid: process.pid, sessionFile, cwd, startedAt: new Date().toISOString() };
@@ -125,7 +125,7 @@ function getRunningInstances(): Array<{ port: number; pid: number; sessionFile: 
 }
 
 /**
- * Kill zombie Tau instances — processes that are alive but orphaned
+ * Kill zombie Tau-plus instances — processes that are alive but orphaned
  * (e.g. tmux pane was killed without session_shutdown firing).
  * A zombie is detected by checking if the process has a controlling terminal.
  * If it doesn't, the HTTP server is the only thing keeping it alive.
@@ -153,7 +153,7 @@ function cleanupZombieInstances() {
         const tty = execSync(`ps -o tty= -p ${info.pid}`, { encoding: "utf8" }).trim();
         if (!tty || tty === "??" || tty === "-") {
           // No terminal — this is a zombie, kill it
-          console.log(`[Mirror] Killing zombie Tau instance (PID ${info.pid}, port ${info.port})`);
+          console.log(`[Mirror] Killing zombie Tau-plus instance (PID ${info.pid}, port ${info.port})`);
           process.kill(info.pid, "SIGTERM");
           try { fs.unlinkSync(path.join(INSTANCES_DIR, file)); } catch {}
         }
@@ -183,8 +183,8 @@ function saveTauSetting(key: string, value: any) {
   const settingsPath = path.join(process.env.HOME || "~", ".pi/agent/settings.json");
   try {
     const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
-    if (!settings.tau) settings.tau = {};
-    settings.tau[key] = value;
+    if (!settings["tau-plus"]) settings["tau-plus"] = {};
+    settings["tau-plus"][key] = value;
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
   } catch {}
 }
@@ -201,7 +201,7 @@ function checkBasicAuth(req: http.IncomingMessage): boolean {
 
 function sendAuthRequired(res: http.ServerResponse) {
   res.writeHead(401, {
-    "WWW-Authenticate": 'Basic realm="Tau"',
+    "WWW-Authenticate": 'Basic realm="Tau-plus"',
     "Content-Type": "application/json",
   });
   res.end(JSON.stringify({ error: "Unauthorized" }));
@@ -285,39 +285,39 @@ export default function (pi: ExtensionAPI) {
   }
 
   // ═══════════════════════════════════════
-  // /tau-stop and /tau-start commands
+  // /tau-plus-stop and /tau-plus-start commands
   // ═══════════════════════════════════════
-  pi.registerCommand("taustop", {
-    description: "Stop the Tau mirror server",
+  pi.registerCommand("tau-plus-stop", {
+    description: "Stop the Tau-plus mirror server",
     handler: async (_args, ctx) => {
       if (!server) {
-        ctx.ui.notify("Tau is not running", "warning");
+        ctx.ui.notify("Tau-plus is not running", "warning");
         return;
       }
       stopServer();
       ctx.ui.setStatus("mirror", "");
-      ctx.ui.notify("Tau mirror server stopped", "info");
+      ctx.ui.notify("Tau-plus mirror server stopped", "info");
       console.log("[Mirror] Server stopped via /taustop");
     },
   });
 
-  pi.registerCommand("taustart", {
-    description: "Start the Tau mirror server",
+  pi.registerCommand("tau-plus-start", {
+    description: "Start the Tau-plus mirror server",
     handler: async (_args, ctx) => {
       if (server) {
-        ctx.ui.notify(`Tau is already running at ${mirrorUrl}`, "warning");
+        ctx.ui.notify(`Tau-plus is already running at ${mirrorUrl}`, "warning");
         return;
       }
       startServer(ctx);
-      ctx.ui.notify("Tau mirror server starting...", "info");
+      ctx.ui.notify("Tau-plus mirror server starting...", "info");
     },
   });
 
   // ═══════════════════════════════════════
   // /qr command — show QR code to connect
   // ═══════════════════════════════════════
-  pi.registerCommand("tau", {
-    description: "Open Tau web UI in browser",
+  pi.registerCommand("tau-plus", {
+    description: "Open Tau-plus web UI in browser",
     handler: async (_args, ctx) => {
       if (!mirrorUrl) {
         ctx.ui.notify("Mirror server not running yet", "warning");
@@ -330,14 +330,14 @@ export default function (pi: ExtensionAPI) {
   });
 
   pi.registerCommand("qr", {
-    description: "Show QR code for Tau mirror URL",
+    description: "Show QR code for Tau-plus mirror URL",
     handler: async (_args, ctx) => {
       if (!mirrorUrl) {
         ctx.ui.notify("Mirror server not running yet", "warning");
         return;
       }
       const qrPageUrl = `${mirrorUrl}/api/qr`;
-      ctx.ui.notify(`Tau: ${mirrorUrl}  •  QR: ${qrPageUrl}`, "info");
+      ctx.ui.notify(`Tau-plus: ${mirrorUrl}  •  QR: ${qrPageUrl}`, "info");
       // Open in default browser
       const { exec } = require("node:child_process");
       exec(`open "${qrPageUrl}"`);
@@ -347,8 +347,8 @@ export default function (pi: ExtensionAPI) {
   // ═══════════════════════════════════════
   // /tauresume — in-process session switching
   // ═══════════════════════════════════════
-  pi.registerCommand("tauresume", {
-    description: "Switch to a different session (used by Tau UI)",
+  pi.registerCommand("tau-plus-resume", {
+    description: "Switch to a different session (used by Tau-plus UI)",
     handler: async (args, ctx) => {
       const sessionPath = args.trim();
       if (!sessionPath) {
@@ -862,7 +862,7 @@ export default function (pi: ExtensionAPI) {
 
         case "set_auth": {
           if (!AUTH_CONFIGURED) {
-            sendTo(ws, error("set_auth", "No credentials configured. Set tau.user and tau.pass in settings.json"));
+            sendTo(ws, error("set_auth", "No credentials configured. Set tau-plus.user and tau-plus.pass in settings.json"));
             break;
           }
           authEnabled = !!command.enabled;
@@ -979,10 +979,10 @@ export default function (pi: ExtensionAPI) {
           : "";
         res.writeHead(200, { "Content-Type": "text/html" });
         res.end(`<!DOCTYPE html>
-<html><head><meta name="viewport" content="width=device-width"><title>Tau — Connect</title>
+<html><head><meta name="viewport" content="width=device-width"><title>Tau-plus — Connect</title>
 <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#131316;color:#fff;font-family:-apple-system,sans-serif}
 img{border-radius:12px}a{color:#b87a5c;font-size:18px;margin-top:16px}p{color:rgba(255,255,255,0.5);font-size:13px;margin-top:8px}</style>
-</head><body><p style="color:rgba(255,255,255,0.3);font-size:11px">LAN</p><img src="${dataUrls[0]}" width="256" height="256" alt="QR Code"><a href="${mirrorUrl}">${mirrorUrl}</a>${tsSection}<p style="margin-top:16px">Scan to open Tau on your phone</p></body></html>`);
+</head><body><p style="color:rgba(255,255,255,0.3);font-size:11px">LAN</p><img src="${dataUrls[0]}" width="256" height="256" alt="QR Code"><a href="${mirrorUrl}">${mirrorUrl}</a>${tsSection}<p style="margin-top:16px">Scan to open Tau-plus on your phone</p></body></html>`);
       }).catch((e: any) => {
         res.writeHead(500, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ error: e.message }));
@@ -1095,6 +1095,27 @@ img{border-radius:12px}a{color:#b87a5c;font-size:18px;margin-top:16px}p{color:rg
       } catch (err: any) {
         res.writeHead(500); res.end(err.message);
       }
+      return;
+    }
+
+    // Editor: save file content
+    if (urlPath === "/api/write" && req.method === "POST") {
+      let body = "";
+      req.on("data", (chunk: Buffer) => { body += chunk.toString(); });
+      req.on("end", () => {
+        try {
+          const payload = JSON.parse(body);
+          if (!payload.filePath || typeof payload.content !== "string") {
+            res.writeHead(400); res.end("Invalid payload");
+            return;
+          }
+          fs.writeFileSync(payload.filePath, payload.content);
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ success: true }));
+        } catch (err: any) {
+          res.writeHead(500); res.end(err.message);
+        }
+      });
       return;
     }
 
@@ -1568,7 +1589,7 @@ img{border-radius:12px}a{color:#b87a5c;font-size:18px;margin-top:16px}p{color:rg
 
     server.on("upgrade", (request, socket, head) => {
       if (authEnabled && !checkBasicAuth(request)) {
-        socket.write("HTTP/1.1 401 Unauthorized\r\nWWW-Authenticate: Basic realm=\"Tau\"\r\n\r\n");
+        socket.write("HTTP/1.1 401 Unauthorized\r\nWWW-Authenticate: Basic realm=\"Tau-plus\"\r\n\r\n");
         socket.destroy();
         return;
       }
@@ -1698,14 +1719,14 @@ img{border-radius:12px}a{color:#b87a5c;font-size:18px;margin-top:16px}p{color:rg
 
       mirrorUrl = `http://${localIp}:${port}`;
       tailscaleUrl = tailscaleIp ? `http://${tailscaleIp}:${port}` : "";
-      console.log(`[Mirror] Tau mirror server running on ${mirrorUrl}${tailscaleUrl ? `  •  Tailscale: ${tailscaleUrl}` : ""}`);
+      console.log(`[Mirror] Tau-plus mirror server running on ${mirrorUrl}${tailscaleUrl ? `  •  Tailscale: ${tailscaleUrl}` : ""}`);
       ctx.ui.setStatus("mirror", `Mirror: ${localIp}:${port}${tailscaleIp ? ` • TS: ${tailscaleIp}:${port}` : ""}`);
 
       // Register this instance
       const sessionFile = ctx.sessionManager.getSessionFile() || "";
       registerInstance(port, sessionFile, ctx.cwd || process.cwd());
 
-      ctx.ui.notify(`Tau mirror: ${mirrorUrl}${tailscaleUrl ? `  •  Tailscale: ${tailscaleUrl}` : ""}  •  /qr for QR code`, "info");
+      ctx.ui.notify(`Tau-plus mirror: ${mirrorUrl}${tailscaleUrl ? `  •  Tailscale: ${tailscaleUrl}` : ""}  •  /qr for QR code`, "info");
     };
 
     tryListen(PORT);
@@ -1718,7 +1739,7 @@ img{border-radius:12px}a{color:#b87a5c;font-size:18px;margin-top:16px}p{color:rg
     latestCtx = ctx;
 
     if (!TAU_AUTO_START) {
-      console.log("[Mirror] Tau auto-start disabled (TAU_DISABLED=1). Use /tau-start to start manually.");
+      console.log("[Mirror] Tau-plus auto-start disabled (TAU_DISABLED=1). Use /tau-plus-start to start manually.");
       return;
     }
 

@@ -1,10 +1,10 @@
 ---
-description: Describes the web UI architecture and interaction with the DOM in the Tau mirror project.
+description: Describes the web UI architecture and interaction with the DOM in the Tau-plus mirror project.
 ---
 
-# Tau Web UI Architecture Skill
+# Tau-plus Web UI Architecture Skill
 
-When asked to modify the web UI of the Tau mirror project, you MUST understand how the ES6 modules interact with the DOM to prevent breaking the layout or the rich-text editor.
+When asked to modify the web UI of the Tau-plus mirror project, you MUST understand how the ES6 modules interact with the DOM to prevent breaking the layout or the rich-text editor.
 
 1. **The `contenteditable` Chat Input**:
    - Located in `public/chat-input.js`. 

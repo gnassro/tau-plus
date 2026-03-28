@@ -26,7 +26,7 @@ export class Launcher {
       this.container.innerHTML = `
         <div class="launcher-empty">
           <p>No projects directory configured.</p>
-          <p class="hint">Add <code>"tau": { "projectsDir": "~/Projects" }</code> to <code>~/.pi/agent/settings.json</code></p>
+          <p class="hint">Add <code>"tau-plus": { "projectsDir": "~/Projects" }</code> to <code>~/.pi/agent/settings.json</code></p>
         </div>`;
       return;
     }

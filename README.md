@@ -1,10 +1,12 @@
-# Tau
+# Tau-plus
+
+*Note: This project is a fork of the original [tau](https://github.com/deflating/tau) project.*
 
 A web UI that mirrors your [Pi](https://github.com/badlogic/pi-mono) terminal session in the browser. No separate server — it runs as a Pi extension inside your existing process.
 
-![Tau dark mode](docs/images/dark.png)
+![Tau-plus dark mode](docs/images/dark.png)
 
-![Tau terracotta theme](docs/images/terracotta.png)
+![Tau-plus terracotta theme](docs/images/terracotta.png)
 
 ![Settings](docs/images/settings.png)
 
@@ -12,13 +14,13 @@ A web UI that mirrors your [Pi](https://github.com/badlogic/pi-mono) terminal se
 
 ## What it does
 
-Tau connects to your running Pi TUI and gives you a second view in the browser. Same session, same messages, same tools — just a different screen. Type in the terminal or the browser, both stay in sync.
+Tau-plus connects to your running Pi TUI and gives you a second view in the browser. Same session, same messages, same tools — just a different screen. Type in the terminal or the browser, both stay in sync.
 
 - **Antigravity / Cursor IDE Layout** — Three-pane workspace with a File Explorer (left), Code Viewer (center), and Chat (right).
 - **Inline Context Engine** — Type `@` to instantly fuzzy-search project files and inject them as beautiful, interactive UI chips directly into your text cursor.
 - **Smart Code Snippet Injection** — Highlight any text in the center code editor to spawn a floating "Add to Chat" button, injecting the exact file path and line numbers cleanly into your prompt.
 - **Strict Project History** — A dedicated Session History modal that filters your past chats strictly to your active Current Working Directory (CWD).
-- **Live session switching** — Click any historical session in the sidebar, and Tau will seamlessly switch your active agent session **in-process** without launching a new terminal tab.
+- **Live session switching** — Click any historical session in the sidebar, and Tau-plus will seamlessly switch your active agent session **in-process** without launching a new terminal tab.
 - **Live mirroring** — streams messages, tool calls, and thinking blocks in real-time. Features a dynamic typing indicator that explicitly tells you when the agent is "Thinking" vs "Working" on a specific tool.
 - **Works on any device** — open it on your phone, tablet, or another monitor
 - **No extra process** — the Pi extension *is* the server
@@ -26,13 +28,13 @@ Tau connects to your running Pi TUI and gives you a second view in the browser. 
 ## Install
 
 ```bash
-pi install npm:tau-mirror
+pi install npm:tau-plus-mirror
 ```
 
 Or from git:
 
 ```bash
-pi install git:github.com/deflating/tau
+pi install git:github.com/deflating/tau-plus
 ```
 
 ## Usage
@@ -96,19 +98,19 @@ Environment variables (set before starting Pi):
 |----------|---------|-------------|
 | `TAU_MIRROR_PORT` | `3001` | Server port |
 | `TAU_STATIC_DIR` | *(bundled)* | Override static files path |
-| `TAU_DISABLED` | `0` | Set to `1` to disable Tau (it stays installed but won't start the server) |
+| `TAU_DISABLED` | `0` | Set to `1` to disable Tau-plus (it stays installed but won't start the server) |
 | `TAU_USER` | *(none)* | HTTP Basic Auth username (both `TAU_USER` and `TAU_PASS` required to enable) |
 | `TAU_PASS` | *(none)* | HTTP Basic Auth password |
 
 ### Authentication
 
-Tau supports optional HTTP Basic Auth (browser-native login popup).
+Tau-plus supports optional HTTP Basic Auth (browser-native login popup).
 
 **1. Set credentials** — add to `~/.pi/agent/settings.json`:
 
 ```json
 {
-  "tau": {
+  "tau-plus": {
     "user": "pi",
     "pass": "your-password"
   }
@@ -117,36 +119,36 @@ Tau supports optional HTTP Basic Auth (browser-native login popup).
 
 Or via environment variables: `TAU_USER=pi TAU_PASS=secret pi`
 
-**2. Toggle on/off** — once credentials are configured, a "Require login" toggle appears in Settings within the Tau web UI. Flip it on to start requiring authentication, off to open it back up. The setting persists across restarts.
+**2. Toggle on/off** — once credentials are configured, a "Require login" toggle appears in Settings within the Tau-plus web UI. Flip it on to start requiring authentication, off to open it back up. The setting persists across restarts.
 
 Both HTTP and WebSocket connections are gated when enabled. The `/api/health` endpoint remains open for monitoring.
 
 ### Start / Stop
 
-Control Tau at runtime without uninstalling:
+Control Tau-plus at runtime without uninstalling:
 
 ```
-/tau-stop     Stop the mirror server
-/tau-start    Start it again
+/tau-plus-stop     Stop the mirror server
+/tau-plus-start    Start it again
 ```
 
-To prevent Tau from auto-starting (e.g. in multi-session or dev container workflows):
+To prevent Tau-plus from auto-starting (e.g. in multi-session or dev container workflows):
 
 ```bash
 TAU_DISABLED=1 pi
 ```
 
-You can still start it manually with `/tau-start` in that session.
+You can still start it manually with `/tau-plus-start` in that session.
 
 ## How it works
 
-Tau is a [Pi extension](https://github.com/badlogic/pi-mono#extensions) that starts an HTTP + WebSocket server inside the Pi process. The extension subscribes to all Pi events and forwards them to connected browser clients. Commands from the browser are executed via the extension API against the same agent session.
+Tau-plus is a [Pi extension](https://github.com/badlogic/pi-mono#extensions) that starts an HTTP + WebSocket server inside the Pi process. The extension subscribes to all Pi events and forwards them to connected browser clients. Commands from the browser are executed via the extension API against the same agent session.
 
 ```
 ┌─────────────┐     ┌──────────────────────────────┐     ┌─────────────┐
 │  Pi TUI     │     │  Pi Process                  │     │  Browser    │
-│  (terminal) │◄───►│                              │◄───►│  (Tau)      │
-│             │     │  tau extension               │     │             │
+│  (terminal) │◄───►│                              │◄───►│  (Tau-plus)      │
+│             │     │  tau-plus extension               │     │             │
 └─────────────┘     │    ↳ HTTP + WS on :3001      │     └─────────────┘
                     └──────────────────────────────┘
 ```
@@ -158,8 +160,8 @@ There's no separate server to run. The extension auto-loads when Pi starts and s
 Clone and point the extension at the local static files:
 
 ```bash
-git clone https://github.com/deflating/tau.git
-cd tau
+git clone https://github.com/deflating/tau-plus.git
+cd tau-plus
 TAU_STATIC_DIR=$(pwd)/public pi
 ```
 
